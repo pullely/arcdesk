@@ -49,7 +49,10 @@
         }
       ],
       "services": [
-        // @cycle-break:billing-worker->membership-worker:ewogICAgICAgICAgImJpbmRpbmciOiAiTUVNQkVSU0hJUF9XT1JLRVIiLAogICAgICAgICAgInNlcnZpY2UiOiAiYXJjZGVzay1tZW1iZXJzaGlwLXdvcmtlci1zdGFnZSIKICAgICAgICB9LA==
+        {
+          "binding": "MEMBERSHIP_WORKER",
+          "service": "arcdesk-membership-worker-stage"
+        },
         {
           "binding": "POLICY_WORKER",
           "service": "arcdesk-policy-worker-stage"
@@ -73,7 +76,10 @@
         }
       ],
       "services": [
-        // @cycle-break:billing-worker->membership-worker:ewogICAgICAgICAgImJpbmRpbmciOiAiTUVNQkVSU0hJUF9XT1JLRVIiLAogICAgICAgICAgInNlcnZpY2UiOiAiYXJjZGVzay1tZW1iZXJzaGlwLXdvcmtlci1wcm9kIgogICAgICAgIH0s
+        {
+          "binding": "MEMBERSHIP_WORKER",
+          "service": "arcdesk-membership-worker-prod"
+        },
         {
           "binding": "POLICY_WORKER",
           "service": "arcdesk-policy-worker-prod"
