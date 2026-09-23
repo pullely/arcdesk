@@ -12,6 +12,10 @@ export const qk = {
   projects: (orgId: string) => ["projects", orgId] as const,
   arcBoard: (orgId: string) => ["arcBoard", orgId] as const,
   arcRequests: (orgId: string) => ["arcRequests", orgId] as const,
+  arcRequest: (orgId: string, requestId: string) => ["arcRequest", orgId, requestId] as const,
+  arcComments: (orgId: string, requestId: string) => ["arcComments", orgId, requestId] as const,
+  arcVotes: (orgId: string, requestId: string) => ["arcVotes", orgId, requestId] as const,
+  arcDecision: (orgId: string, requestId: string) => ["arcDecision", orgId, requestId] as const,
   environments: (orgId: string, projectId: string) =>
     ["environments", orgId, projectId] as const,
   members: (orgId: string) => ["members", orgId] as const,

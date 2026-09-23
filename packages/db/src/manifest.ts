@@ -192,5 +192,14 @@ export const manifest: MigrationManifest = {
       description:
         "Architectural review foundation (AD1) — the association's review board (one per organization), its document checklist, the homeowner's request with a hashed status token, and the documents stored in R2; clock_started_at is written only when every required checklist item has a document",
     },
+    {
+      id: "210_arc_review",
+      context: "arc",
+      path: "210_arc_review/up.sql",
+      checksum:
+        "b8db7af149b08c633581c960ff7b1ab4ba3802925ca94d1dde6afd048d01c9fa",
+      description:
+        "Architectural review workflow (AD2) — committee comments (internal or shown to the homeowner), one vote per member per request (UNIQUE request_id, voter_subject_id), and the single immutable decision per request with its PDF letter's R2 key, SHA-256 and letter-link token hash; plus the board's own appeal wording",
+    },
   ],
 };

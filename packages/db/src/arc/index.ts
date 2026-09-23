@@ -1,5 +1,11 @@
 export type {
   ArcBoard,
+  ArcComment,
+  ArcDecision,
+  ArcVoteRow,
+  CreateArcCommentInput,
+  CreateArcDecisionInput,
+  UpsertArcVoteInput,
   ArcChecklistItem,
   ArcDocument,
   ArcRepository,

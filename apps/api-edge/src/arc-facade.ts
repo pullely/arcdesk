@@ -13,9 +13,11 @@ import { createTimings } from "@saas/contracts/timing";
 //     actor header a caller tries to smuggle in, and is rate-limited under its
 //     own family, keyed by client IP (no bearer ⇒ anon:<family>:<ip>).
 
-const ORG_ARC_RE = /^\/v1\/organizations\/[^/]+\/arc\/(?:board|checklist(?:\/[^/]+)?|requests(?:\/[^/]+(?:\/documents\/[^/]+)?)?)$/;
+const ORG_ARC_RE =
+  /^\/v1\/organizations\/[^/]+\/arc\/(?:board|checklist(?:\/[^/]+)?|requests(?:\/[^/]+(?:\/documents\/[^/]+|\/comments|\/votes|\/votes\/me|\/decision|\/letter)?)?)$/;
 
-const PUBLIC_API_RE = /^\/v1\/public\/arc\/(?:boards\/[^/]+(?:\/requests)?|requests\/[^/]+(?:\/documents\/[^/]+)?)$/;
+const PUBLIC_API_RE =
+  /^\/v1\/public\/arc\/(?:boards\/[^/]+(?:\/requests)?|requests\/[^/]+(?:\/documents\/[^/]+|\/letter)?|letters\/[^/]+)$/;
 const PUBLIC_PAGE_RE = /^\/arc\/(?:f|s)\/[^/]+$/;
 
 const FORWARDED_HEADERS = ["content-type", "content-length", "traceparent", "idempotency-key", "x-filename"];

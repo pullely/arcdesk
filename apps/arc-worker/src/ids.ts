@@ -22,6 +22,9 @@ export const parseRequestPublicId = (id: string): Uuid | null => uuidFromPublicI
 export const documentPublicId = (uuid: string): string => `ard_${uuidToHex(uuid)}`;
 export const parseDocumentPublicId = (id: string): Uuid | null => uuidFromPublicId(id, "ard");
 
+export const commentPublicId = (uuid: string): string => `acm_${uuidToHex(uuid)}`;
+export const decisionPublicId = (uuid: string): string => `adc_${uuidToHex(uuid)}`;
+
 /**
  * The actor id in the shape a UUID column takes: pass a UUID through, decode a
  * `usr_<hex>` public id, and write null rather than garbage for anything else.

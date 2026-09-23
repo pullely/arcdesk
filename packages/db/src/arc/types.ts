@@ -14,6 +14,7 @@ export interface ArcBoard {
   contactEmail: string;
   escalationEmail: string | null;
   formEnabled: boolean;
+  appealText: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -29,6 +30,7 @@ export interface UpsertArcBoardInput {
   contactEmail: string;
   escalationEmail: string | null;
   formEnabled: boolean;
+  appealText: string | null;
   createdBy: string | null;
   now: string;
 }
@@ -125,6 +127,60 @@ export interface ListArcRequestsFilter {
   before?: { createdAt: string; id: string } | undefined;
 }
 
+export interface ArcComment {
+  id: string;
+  orgId: string;
+  requestId: string;
+  authorSubjectId: string;
+  body: string;
+  visibility: string;
+  createdAt: string;
+}
+
+export type CreateArcCommentInput = ArcComment;
+
+export interface ArcVoteRow {
+  id: string;
+  orgId: string;
+  requestId: string;
+  voterSubjectId: string;
+  vote: string;
+  conditions: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertArcVoteInput {
+  id: string;
+  orgId: string;
+  requestId: string;
+  voterSubjectId: string;
+  vote: string;
+  conditions: string | null;
+  note: string | null;
+  now: string;
+}
+
+export interface ArcDecision {
+  id: string;
+  orgId: string;
+  requestId: string;
+  outcome: string;
+  conditions: string | null;
+  rationale: string | null;
+  voteTally: Record<string, number>;
+  letterObjectKey: string;
+  letterSha256: string;
+  decidedBy: string | null;
+  decidedAt: string;
+  letterEmailedAt: string | null;
+}
+
+export interface CreateArcDecisionInput extends Omit<ArcDecision, "letterEmailedAt"> {
+  letterTokenHash: string;
+}
+
 export interface ArcRepository {
   getBoardByOrg(orgId: string): Promise<ArcBoard | null>;
   getBoardBySlug(slug: string): Promise<ArcBoard | null>;
@@ -158,4 +214,18 @@ export interface ArcRepository {
    * nothing changed.
    */
   tryStartClock(requestId: string, now: string): Promise<ArcRequest | null>;
+
+  // ── AD2 ──
+  createComment(input: CreateArcCommentInput): Promise<ArcComment>;
+  listComments(requestId: string, visibility?: string): Promise<ArcComment[]>;
+  /** Insert or replace the voter's vote — UNIQUE (request_id, voter_subject_id). */
+  upsertVote(input: UpsertArcVoteInput): Promise<ArcVoteRow>;
+  listVotes(requestId: string): Promise<ArcVoteRow[]>;
+  /** Returns null when the request already has a decision. */
+  createDecision(input: CreateArcDecisionInput): Promise<ArcDecision | null>;
+  getDecision(requestId: string): Promise<ArcDecision | null>;
+  getDecisionByLetterTokenHash(tokenHash: string): Promise<ArcDecision | null>;
+  markLetterEmailed(decisionId: string, at: string): Promise<void>;
+  /** Close an under-review request with its outcome; null when it was not under review. */
+  closeRequest(requestId: string, status: string, decidedAt: string): Promise<ArcRequest | null>;
 }

@@ -1,5 +1,13 @@
 import type {
   ArcChecklistItemResponse,
+  ArcCommentResponse,
+  ArcDecisionResponse,
+  ArcVoteResponse,
+  CreateArcCommentRequest,
+  CreateArcDecisionRequest,
+  ListArcCommentsResponse,
+  ListArcVotesResponse,
+  PutArcVoteRequest,
   CreateArcChecklistItemRequest,
   GetArcBoardResponse,
   GetArcRequestResponse,
@@ -87,6 +95,54 @@ export class ArcClient {
   getRequest(orgId: string, requestId: string, opts: RequestOptions = {}): Promise<GetArcRequestResponse> {
     return this.transport.request<GetArcRequestResponse>(
       { method: "GET", path: `${org(orgId)}/requests/${encodeURIComponent(requestId)}` },
+      opts,
+    );
+  }
+
+  /** GET /v1/organizations/:orgId/arc/requests/:requestId/comments */
+  listComments(orgId: string, requestId: string, opts: RequestOptions = {}): Promise<ListArcCommentsResponse> {
+    return this.transport.request<ListArcCommentsResponse>(
+      { method: "GET", path: `${org(orgId)}/requests/${encodeURIComponent(requestId)}/comments` },
+      opts,
+    );
+  }
+
+  /** POST /v1/organizations/:orgId/arc/requests/:requestId/comments */
+  comment(orgId: string, requestId: string, body: CreateArcCommentRequest, opts: RequestOptions = {}): Promise<ArcCommentResponse> {
+    return this.transport.request<ArcCommentResponse>(
+      { method: "POST", path: `${org(orgId)}/requests/${encodeURIComponent(requestId)}/comments`, body },
+      opts,
+    );
+  }
+
+  /** GET /v1/organizations/:orgId/arc/requests/:requestId/votes — every vote and the tally. */
+  listVotes(orgId: string, requestId: string, opts: RequestOptions = {}): Promise<ListArcVotesResponse> {
+    return this.transport.request<ListArcVotesResponse>(
+      { method: "GET", path: `${org(orgId)}/requests/${encodeURIComponent(requestId)}/votes` },
+      opts,
+    );
+  }
+
+  /** PUT /v1/organizations/:orgId/arc/requests/:requestId/votes/me — the caller's own vote; a re-vote replaces. */
+  vote(orgId: string, requestId: string, body: PutArcVoteRequest, opts: RequestOptions = {}): Promise<ArcVoteResponse> {
+    return this.transport.request<ArcVoteResponse>(
+      { method: "PUT", path: `${org(orgId)}/requests/${encodeURIComponent(requestId)}/votes/me`, body },
+      opts,
+    );
+  }
+
+  /** POST /v1/organizations/:orgId/arc/requests/:requestId/decision — renders, stores and emails the letter. */
+  decide(orgId: string, requestId: string, body: CreateArcDecisionRequest, opts: RequestOptions = {}): Promise<ArcDecisionResponse> {
+    return this.transport.request<ArcDecisionResponse>(
+      { method: "POST", path: `${org(orgId)}/requests/${encodeURIComponent(requestId)}/decision`, body },
+      opts,
+    );
+  }
+
+  /** GET /v1/organizations/:orgId/arc/requests/:requestId/decision */
+  getDecision(orgId: string, requestId: string, opts: RequestOptions = {}): Promise<ArcDecisionResponse> {
+    return this.transport.request<ArcDecisionResponse>(
+      { method: "GET", path: `${org(orgId)}/requests/${encodeURIComponent(requestId)}/decision` },
       opts,
     );
   }

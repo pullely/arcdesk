@@ -10,6 +10,17 @@ import {
 import { handleGetDocument, handleGetRequest, handleListRequests } from "./handlers/requests.js";
 import { handlePublicBoard, handlePublicStatus, handleSubmit, handleUpload } from "./handlers/public.js";
 import { handleFormPage, handleStatusPage } from "./handlers/pages.js";
+import {
+  handleCreateComment,
+  handleCreateDecision,
+  handleGetDecision,
+  handleGetLetter,
+  handleListComments,
+  handleListVotes,
+  handlePublicLetterByStatus,
+  handlePublicLetterByToken,
+  handlePutVote,
+} from "./handlers/review.js";
 import { errorResponse, methodNotAllowed, notFound } from "./http.js";
 import {
   generateRequestId,
@@ -57,11 +68,15 @@ const CHECKLIST_ITEM_RE = /^\/v1\/organizations\/([^/]+)\/arc\/checklist\/([^/]+
 const REQUESTS_RE = /^\/v1\/organizations\/([^/]+)\/arc\/requests$/;
 const REQUEST_RE = /^\/v1\/organizations\/([^/]+)\/arc\/requests\/([^/]+)$/;
 const REQUEST_DOCUMENT_RE = /^\/v1\/organizations\/([^/]+)\/arc\/requests\/([^/]+)\/documents\/([^/]+)$/;
+// AD2 — the committee's side of a request
+const REQUEST_SUB_RE = /^\/v1\/organizations\/([^/]+)\/arc\/requests\/([^/]+)\/(comments|votes|votes\/me|decision|letter)$/;
 
 // Public — no account
 const PUBLIC_BOARD_RE = /^\/v1\/public\/arc\/boards\/([a-z0-9-]{1,48})$/;
 const PUBLIC_SUBMIT_RE = /^\/v1\/public\/arc\/boards\/([a-z0-9-]{1,48})\/requests$/;
 const PUBLIC_STATUS_RE = /^\/v1\/public\/arc\/requests\/([A-Za-z0-9_-]{1,64})$/;
+const PUBLIC_STATUS_LETTER_RE = /^\/v1\/public\/arc\/requests\/([A-Za-z0-9_-]{1,64})\/letter$/;
+const PUBLIC_LETTER_RE = /^\/v1\/public\/arc\/letters\/([A-Za-z0-9_-]{1,64})$/;
 const PUBLIC_UPLOAD_RE = /^\/v1\/public\/arc\/requests\/([A-Za-z0-9_-]{1,64})\/documents\/([a-z_][a-z0-9_]{0,39})$/;
 const FORM_PAGE_RE = /^\/arc\/f\/([a-z0-9-]{1,48})$/;
 const STATUS_PAGE_RE = /^\/arc\/s\/([A-Za-z0-9_-]{1,64})$/;
@@ -89,6 +104,12 @@ async function routePublic(request: Request, env: Env, requestId: string, path: 
   if ((m = path.match(PUBLIC_UPLOAD_RE))) {
     return request.method === "PUT" ? handleUpload(request, env, requestId, m[1]!, m[2]!) : methodNotAllowed(requestId);
   }
+  if ((m = path.match(PUBLIC_STATUS_LETTER_RE))) {
+    return request.method === "GET" ? handlePublicLetterByStatus(env, requestId, m[1]!) : methodNotAllowed(requestId);
+  }
+  if ((m = path.match(PUBLIC_LETTER_RE))) {
+    return request.method === "GET" ? handlePublicLetterByToken(env, requestId, m[1]!) : methodNotAllowed(requestId);
+  }
   if ((m = path.match(PUBLIC_STATUS_RE))) {
     return request.method === "GET" ? handlePublicStatus(env, requestId, m[1]!) : methodNotAllowed(requestId);
   }
@@ -99,6 +120,38 @@ async function routeOrg(request: Request, env: Env, requestId: string, path: str
   let m: RegExpMatchArray | null;
   const method = request.method;
 
+  if ((m = path.match(REQUEST_SUB_RE))) {
+    const org = parseOrgPublicId(m[1]!);
+    const req = parseRequestPublicId(m[2]!);
+    if (!org || !req) return notFound(requestId);
+    const sub = m[3]!;
+    const allowedMethods: Record<string, string[]> = {
+      comments: ["GET", "POST"],
+      votes: ["GET"],
+      "votes/me": ["PUT"],
+      decision: ["GET", "POST"],
+      letter: ["GET"],
+    };
+    if (!allowedMethods[sub]!.includes(method)) return methodNotAllowed(requestId);
+    const actor = resolveActor(request);
+    if (!actor) return unauthenticated(requestId);
+    switch (sub) {
+      case "comments":
+        return method === "GET"
+          ? handleListComments(env, requestId, actor, org, req)
+          : handleCreateComment(request, env, requestId, actor, org, req);
+      case "votes":
+        return handleListVotes(env, requestId, actor, org, req);
+      case "votes/me":
+        return handlePutVote(request, env, requestId, actor, org, req);
+      case "decision":
+        return method === "GET"
+          ? handleGetDecision(env, requestId, actor, org, req)
+          : handleCreateDecision(request, env, requestId, actor, org, req, publicOrigin(request));
+      default:
+        return handleGetLetter(env, requestId, actor, org, req);
+    }
+  }
   if ((m = path.match(REQUEST_DOCUMENT_RE))) {
     const org = parseOrgPublicId(m[1]!);
     const req = parseRequestPublicId(m[2]!);

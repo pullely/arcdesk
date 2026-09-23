@@ -6,8 +6,8 @@ the code departed from `design.md`.
 | Milestone | State | PR |
 |---|---|---|
 | AD0 — the spec | ✅ landed | #6 |
-| AD1 — the public request form | in review | AD-2 |
-| AD2 — the review-board workflow | | |
+| AD1 — the public request form | ✅ landed (AD-2) | #11 |
+| AD2 — the review-board workflow | in review | AD-3 |
 | AD3 — the decision-deadline clock | | |
 
 ## Departures from the design
@@ -37,3 +37,14 @@ the code departed from `design.md`.
   D1 executor reports `rowCount = rows.length`, so a write without `RETURNING`
   always reports 0 on D1; `tests/arc-worker/src/d1-rowcount.test.ts` pins it on
   real SQLite.
+- **Verified live (stage)**: organization create 201 (the D1 fix), board, public
+  form, submit, upload; the clock started on live D1 only when the last required
+  document arrived; the PDF streamed back from R2 byte-for-byte. **Prod**:
+  `/health` and the public lane answer; the authenticated R2 round-trip was not
+  run on prod, because prod sign-in sends a real magic-link email.
+
+### AD2 (task AD-3)
+
+- Trap 22: the vote upsert, the decision insert and the request close all
+  report through `RETURNING`; `markLetterEmailed` is fire-and-forget and
+  inspects nothing.

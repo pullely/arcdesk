@@ -5,7 +5,7 @@ request, each pull request landed with `orun pr land`. A milestone is marked
 ✅ here when its "done when" list is true, and recorded in
 `IMPLEMENTATION-STATUS.md`.
 
-## AD0 — the spec
+## AD0 — the spec ✅
 
 This doc set, merged to `main` and attached to the epic with `orun spec push`.
 
@@ -13,7 +13,7 @@ This doc set, merged to `main` and attached to the epic with `orun spec push`.
 - the five documents are on `main`
 - `orun spec list --epic arcdesk-architectural-review` shows them
 
-## AD1 — the public request form
+## AD1 — the public request form ✅
 
 The first user-visible change. `packages/db` gains the `arc` bounded context
 and migration `200_arc_core` (boards, checklist items, requests, documents)

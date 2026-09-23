@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ClipboardCheck } from "lucide-react";
 import { OrgScope } from "@/components/shell/org-scope";
@@ -100,7 +101,7 @@ function Inner({ orgId, orgSlug, orgName }: { orgId: string; orgSlug: string; or
                 No requests yet. Share the form link with homeowners.
               </div>
             ) : (
-              <RequestsTable requests={requests.data ?? []} />
+              <RequestsTable requests={requests.data ?? []} orgSlug={orgSlug} />
             )}
           </CardContent>
         </Card>
@@ -248,7 +249,7 @@ function BoardForm({
   );
 }
 
-function RequestsTable({ requests }: { requests: PublicArcRequest[] }) {
+function RequestsTable({ requests, orgSlug }: { requests: PublicArcRequest[]; orgSlug: string }) {
   return (
     <Table>
       <THead>
@@ -265,7 +266,9 @@ function RequestsTable({ requests }: { requests: PublicArcRequest[] }) {
           const s = STATUS[r.status] ?? { label: r.status, variant: "secondary" as const };
           return (
             <TR key={r.id}>
-              <TD className="font-mono text-xs">{r.reference}</TD>
+              <TD className="font-mono text-xs">
+                <Link className="underline" href={`/orgs/${orgSlug}/arc/requests/${r.id}`}>{r.reference}</Link>
+              </TD>
               <TD>
                 <div className="font-medium">{r.title}</div>
                 <div className="text-xs text-muted-foreground">

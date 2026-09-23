@@ -1,6 +1,6 @@
 import { buildIdempotencyKey, enqueueNotification } from "@saas/notifications-client";
-import { arcRequestReference } from "@saas/contracts/arc";
-import type { ArcBoard, ArcRequest } from "@saas/db/arc";
+import { ARC_DECISION_OUTCOME_LABELS, arcRequestReference, type ArcDecisionOutcome } from "@saas/contracts/arc";
+import type { ArcBoard, ArcDecision, ArcRequest } from "@saas/db/arc";
 import type { Env } from "./env.js";
 import { requestPublicId } from "./ids.js";
 
@@ -39,6 +39,42 @@ export async function sendRequestReceived(
       },
       recipient: { channel: "email", address: request.applicantEmail.toLowerCase() },
       idempotencyKey: buildIdempotencyKey("arc.request.received", requestPublicId(request.id)),
+    },
+  );
+  return result.ok;
+}
+
+/**
+ * Email the homeowner the decision, with a link to the letter. The link is a
+ * capability for the letter alone (its own token, hashed on the decision
+ * row), because the status token was never stored and cannot be re-sent.
+ */
+export async function sendDecided(
+  env: Env,
+  requestId: string,
+  board: ArcBoard,
+  request: ArcRequest,
+  decision: ArcDecision,
+  letterUrl: string,
+): Promise<boolean> {
+  const result = await enqueueNotification(
+    env,
+    { internalActor: "arc-worker", actorSubjectType: "system", actorSubjectId: "arc-worker", requestId },
+    {
+      orgId: request.orgId,
+      category: "product",
+      templateKey: "arc.request.decided",
+      templateData: {
+        associationName: board.associationName,
+        reference: arcRequestReference(request.number),
+        title: request.title,
+        propertyAddress: request.propertyAddress,
+        outcome: ARC_DECISION_OUTCOME_LABELS[decision.outcome as ArcDecisionOutcome] ?? decision.outcome,
+        conditions: decision.conditions,
+        letterUrl,
+      },
+      recipient: { channel: "email", address: request.applicantEmail.toLowerCase() },
+      idempotencyKey: buildIdempotencyKey("arc.request.decided", requestPublicId(request.id)),
     },
   );
   return result.ok;

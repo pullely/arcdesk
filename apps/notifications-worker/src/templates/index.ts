@@ -208,7 +208,39 @@ const renderArcRequestReceived: TemplateRenderer = (data, opts) => {
   return { subject, html, text };
 };
 
+/** Arcdesk: the committee's decision, with a link to the letter (the record). */
+const renderArcRequestDecided: TemplateRenderer = (data, opts) => {
+  const association = str(data, "associationName");
+  const reference = str(data, "reference");
+  const title = str(data, "title");
+  const outcome = str(data, "outcome");
+  const conditions = str(data, "conditions");
+  const letterUrl = str(data, "letterUrl");
+  const brand = opts.brandName ?? "";
+  const subject = `${reference}: ${outcome} \u2014 ${association || "your association"}`;
+  const text = [
+    `${association} has decided ${reference} (${title}): ${outcome}.`,
+    conditions ? `Conditions: ${conditions}` : "",
+    "The decision letter, including how to appeal, is here:",
+    letterUrl,
+  ]
+    .filter((l) => l.length > 0)
+    .join("\n\n");
+  const html = htmlShell(
+    `${escapeHtml(reference)}: ${escapeHtml(outcome)}`,
+    [
+      `<p style="margin:0 0 16px;font-size:14px;">${escapeHtml(association)} has decided <strong>${escapeHtml(title)}</strong>: <strong>${escapeHtml(outcome)}</strong>.</p>`,
+      conditions ? `<p style="margin:0 0 16px;font-size:14px;">Conditions: ${escapeHtml(conditions)}</p>` : "",
+      `<p style="margin:0 0 16px;"><a href="${escapeHtml(letterUrl)}" style="display:inline-block;padding:10px 16px;background:#2f6b5a;color:#ffffff;border-radius:6px;text-decoration:none;font-size:14px;">Read the decision letter</a></p>`,
+      '<p style="margin:0;font-size:13px;color:#6b6b80;">The letter explains how to appeal. Keep it with your property records.</p>',
+    ].join(""),
+    escapeHtml(brand ? `Sent by ${brand} on behalf of ${association}` : `Sent on behalf of ${association}`),
+  );
+  return { subject, html, text };
+};
+
 const TEMPLATES: Record<string, TemplateRenderer> = {
+  "arc.request.decided": renderArcRequestDecided,
   "arc.request.received": renderArcRequestReceived,
   "auth.magic_link": renderMagicLink,
   "invitation.created": renderInvitationCreated,

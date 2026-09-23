@@ -1,5 +1,12 @@
 import type {
   ArcChecklistState,
+  ArcDecisionOutcome,
+  ArcVote,
+  ArcVoteTally,
+  ArcCommentVisibility,
+  PublicArcComment,
+  PublicArcDecision,
+  PublicArcVote,
   ArcPublicBoard,
   ArcPublicStatus,
   ArcRequestCategory,
@@ -15,10 +22,20 @@ import {
   ARC_REQUEST_CATEGORY_LABELS,
   arcRequestReference,
 } from "@saas/contracts/arc";
-import type { ArcBoard, ArcChecklistItem, ArcDocument, ArcRequest } from "@saas/db/arc";
+import type {
+  ArcBoard,
+  ArcChecklistItem,
+  ArcComment,
+  ArcDecision,
+  ArcDocument,
+  ArcRequest,
+  ArcVoteRow,
+} from "@saas/db/arc";
 import {
   boardPublicId,
   checklistItemPublicId,
+  commentPublicId,
+  decisionPublicId,
   documentPublicId,
   orgPublicId,
   requestPublicId,
@@ -43,6 +60,7 @@ export function toPublicBoard(board: ArcBoard): PublicArcBoard {
     contactEmail: board.contactEmail,
     escalationEmail: board.escalationEmail,
     formEnabled: board.formEnabled,
+    appealText: board.appealText,
     formUrlPath: formPath(board.publicSlug),
     createdAt: board.createdAt,
     updatedAt: board.updatedAt,
@@ -133,6 +151,9 @@ export function toPublicStatus(
   request: ArcRequest,
   checklist: ArcChecklistState[],
   documents: readonly ArcDocument[],
+  messages: readonly ArcComment[] = [],
+  decision: ArcDecision | null = null,
+  token = "",
 ): ArcPublicStatus {
   return {
     reference: arcRequestReference(request.number),
@@ -152,6 +173,16 @@ export function toPublicStatus(
       byteSize: d.byteSize,
       uploadedAt: d.uploadedAt,
     })),
+    messages: messages.map((m) => ({ body: m.body, createdAt: m.createdAt })),
+    decision: decision
+      ? {
+          outcome: decision.outcome as ArcDecisionOutcome,
+          conditions: decision.conditions,
+          rationale: decision.rationale,
+          decidedAt: decision.decidedAt,
+          letterPath: `/v1/public/arc/requests/${token}/letter`,
+        }
+      : null,
   };
 }
 
@@ -169,5 +200,44 @@ export function toArcPublicBoard(board: ArcBoard, items: readonly ArcChecklistIt
         required: i.required,
         categories: i.categories as ArcRequestCategory[],
       })),
+  };
+}
+
+export function emptyTally(): ArcVoteTally {
+  return { approve: 0, approve_with_conditions: 0, deny: 0, abstain: 0 };
+}
+
+export function tally(votes: readonly ArcVoteRow[]): ArcVoteTally {
+  const t = emptyTally();
+  for (const v of votes) if (v.vote in t) t[v.vote as ArcVote] += 1;
+  return t;
+}
+
+export function toPublicComment(c: ArcComment): PublicArcComment {
+  return {
+    id: commentPublicId(c.id),
+    authorSubjectId: c.authorSubjectId,
+    body: c.body,
+    visibility: c.visibility as ArcCommentVisibility,
+    createdAt: c.createdAt,
+  };
+}
+
+export function toPublicVote(v: ArcVoteRow): PublicArcVote {
+  return { voterSubjectId: v.voterSubjectId, vote: v.vote as ArcVote, conditions: v.conditions, note: v.note, updatedAt: v.updatedAt };
+}
+
+export function toPublicDecision(d: ArcDecision, orgPublic: string, requestPublic: string): PublicArcDecision {
+  return {
+    id: decisionPublicId(d.id),
+    outcome: d.outcome as ArcDecisionOutcome,
+    conditions: d.conditions,
+    rationale: d.rationale,
+    voteTally: { ...emptyTally(), ...d.voteTally },
+    letterSha256: d.letterSha256,
+    letterPath: `/v1/organizations/${orgPublic}/arc/requests/${requestPublic}/letter`,
+    decidedBy: d.decidedBy,
+    decidedAt: d.decidedAt,
+    letterEmailedAt: d.letterEmailedAt,
   };
 }

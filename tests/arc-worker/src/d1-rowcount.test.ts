@@ -18,7 +18,7 @@ describe("trap 22: rowCount after a write on D1", () => {
     const arc = createArcRepository(executor);
     const { board } = await arc.upsertBoard({
       id: crypto.randomUUID(), orgId: ORG, publicSlug: "elm", associationName: "Elm", state: "TX",
-      reviewDays: 30, contactEmail: "a@b.co", escalationEmail: null, formEnabled: true, createdBy: null, now: NOW,
+      reviewDays: 30, contactEmail: "a@b.co", escalationEmail: null, formEnabled: true, appealText: null, createdBy: null, now: NOW,
     });
 
     const bare = await executor.execute(`UPDATE arc_boards SET association_name = $2 WHERE id = $1`, [board.id, "Elm HOA"]);
@@ -34,7 +34,7 @@ describe("trap 22: rowCount after a write on D1", () => {
     const arc = createArcRepository(createSqlExecutor(d1Over(db)));
     const { board } = await arc.upsertBoard({
       id: crypto.randomUUID(), orgId: ORG, publicSlug: "oak", associationName: "Oak", state: "TX",
-      reviewDays: 30, contactEmail: "a@b.co", escalationEmail: null, formEnabled: true, createdBy: null, now: NOW,
+      reviewDays: 30, contactEmail: "a@b.co", escalationEmail: null, formEnabled: true, appealText: null, createdBy: null, now: NOW,
     });
     await arc.createChecklistItem({ id: crypto.randomUUID(), orgId: ORG, boardId: board.id, key: "site_plan", label: "Site plan", required: true, categories: [], position: 0, now: NOW });
     const request = await arc.createRequest({

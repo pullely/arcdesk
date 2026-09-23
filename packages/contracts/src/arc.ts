@@ -72,6 +72,10 @@ export const ARC_EVENT_TYPES = [
   "arc.request.submitted",
   "arc.request.document_uploaded",
   "arc.request.clock_started",
+  "arc.request.commented",
+  "arc.request.voted",
+  "arc.request.decided",
+  "arc.request.letter_emailed",
 ] as const;
 export type ArcEventType = (typeof ARC_EVENT_TYPES)[number];
 
@@ -87,6 +91,8 @@ export interface PublicArcBoard {
   contactEmail: string;
   escalationEmail: string | null;
   formEnabled: boolean;
+  /** The association's own appeal wording, printed on every letter (AD2). */
+  appealText: string | null;
   formUrlPath: string;
   createdAt: string;
   updatedAt: string;
@@ -160,6 +166,16 @@ export interface ArcPublicStatus {
   decidedAt: string | null;
   checklist: ArcChecklistState[];
   documents: { checklistKey: string | null; filename: string; byteSize: number; uploadedAt: string }[];
+  /** Comments the committee chose to show the homeowner. */
+  messages: { body: string; createdAt: string }[];
+  /** The decision, once there is one. The letter itself is at …/letter. */
+  decision: {
+    outcome: ArcDecisionOutcome;
+    conditions: string | null;
+    rationale: string | null;
+    decidedAt: string;
+    letterPath: string;
+  } | null;
 }
 
 export interface ArcPublicBoard {
@@ -180,6 +196,7 @@ export interface PutArcBoardRequest {
   contactEmail: string;
   escalationEmail?: string | null;
   formEnabled?: boolean;
+  appealText?: string | null;
 }
 export interface GetArcBoardResponse {
   board: PublicArcBoard;
@@ -241,4 +258,110 @@ export interface GetArcPublicBoardResponse {
 /** `AR-0042` — the reference a homeowner and the committee both quote. */
 export function arcRequestReference(number: number): string {
   return `AR-${String(number).padStart(4, "0")}`;
+}
+
+// ── AD2: the review-board workflow ─────────────────────────
+
+export const ARC_VOTES = ["approve", "approve_with_conditions", "deny", "abstain"] as const;
+export type ArcVote = (typeof ARC_VOTES)[number];
+
+export const ARC_DECISION_OUTCOMES = ["approved", "approved_with_conditions", "denied"] as const;
+export type ArcDecisionOutcome = (typeof ARC_DECISION_OUTCOMES)[number];
+
+export const ARC_DECISION_OUTCOME_LABELS: Record<ArcDecisionOutcome, string> = {
+  approved: "Approved",
+  approved_with_conditions: "Approved with conditions",
+  denied: "Denied",
+};
+
+export const ARC_COMMENT_VISIBILITIES = ["committee", "applicant"] as const;
+export type ArcCommentVisibility = (typeof ARC_COMMENT_VISIBILITIES)[number];
+
+/**
+ * The appeal paragraph printed on a decision letter, by state. Statutory
+ * wording is summarised, not quoted, and carries its citation; the
+ * association's own `appealText` is printed after it (or instead of it, for
+ * OTHER). Reviewed as legal content — see risks AD-A.
+ */
+export const ARC_APPEAL_LANGUAGE: Record<ArcState, { text: string; citation: string } | null> = {
+  CA: {
+    text:
+      "If you disagree with this decision, you may ask the association's board of directors to reconsider it. " +
+      "Reconsideration is heard at an open meeting of the board. Send your written request to the association " +
+      "at the contact address below.",
+    citation: "Cal. Civ. Code \u00a74765",
+  },
+  TX: {
+    text:
+      "If your application has been denied, you may request a hearing before the association's board of " +
+      "directors. Send your written request to the association at the contact address below within 30 days " +
+      "of the date of this letter. The board may affirm, change or overturn this decision.",
+    citation: "Tex. Prop. Code \u00a7209.00505",
+  },
+  OTHER: null,
+};
+
+export interface PublicArcComment {
+  id: string;
+  authorSubjectId: string;
+  body: string;
+  visibility: ArcCommentVisibility;
+  createdAt: string;
+}
+
+export interface PublicArcVote {
+  voterSubjectId: string;
+  vote: ArcVote;
+  conditions: string | null;
+  note: string | null;
+  updatedAt: string;
+}
+
+export type ArcVoteTally = Record<ArcVote, number>;
+
+export interface PublicArcDecision {
+  id: string;
+  outcome: ArcDecisionOutcome;
+  conditions: string | null;
+  rationale: string | null;
+  voteTally: ArcVoteTally;
+  letterSha256: string;
+  letterPath: string;
+  decidedBy: string | null;
+  decidedAt: string;
+  letterEmailedAt: string | null;
+}
+
+export interface CreateArcCommentRequest {
+  body: string;
+  visibility?: ArcCommentVisibility;
+}
+export interface ArcCommentResponse {
+  comment: PublicArcComment;
+}
+export interface ListArcCommentsResponse {
+  comments: PublicArcComment[];
+}
+
+export interface PutArcVoteRequest {
+  vote: ArcVote;
+  conditions?: string | null;
+  note?: string | null;
+}
+export interface ArcVoteResponse {
+  vote: PublicArcVote;
+  tally: ArcVoteTally;
+}
+export interface ListArcVotesResponse {
+  votes: PublicArcVote[];
+  tally: ArcVoteTally;
+}
+
+export interface CreateArcDecisionRequest {
+  outcome: ArcDecisionOutcome;
+  conditions?: string | null;
+  rationale?: string | null;
+}
+export interface ArcDecisionResponse {
+  decision: PublicArcDecision;
 }
