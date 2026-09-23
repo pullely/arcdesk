@@ -18,8 +18,11 @@ import type {
   PublicArcRequest,
 } from "@saas/contracts/arc";
 import {
+  ARC_DEADLINE_RULES,
   ARC_REQUEST_CATEGORIES,
   ARC_REQUEST_CATEGORY_LABELS,
+  arcDaysRemaining,
+  arcDeadlineBasis,
   arcRequestReference,
 } from "@saas/contracts/arc";
 import type {
@@ -110,7 +113,20 @@ export function isChecklistComplete(state: readonly ArcChecklistState[]): boolea
   return state.every((s) => !s.required || s.satisfied);
 }
 
-export function toPublicRequest(request: ArcRequest, checklistComplete: boolean): PublicArcRequest {
+/** "45 days from a complete application under Cal. Civ. Code §714 …" — the due date, explained. */
+export function deadlineBasisOf(request: ArcRequest): string | null {
+  if (!request.decisionDueOn || !request.clockStartedAt || !request.deadlineRule) return null;
+  const rule = ARC_DEADLINE_RULES.find((r) => r.key === request.deadlineRule);
+  if (!rule) return null;
+  const days = arcDaysRemaining(request.decisionDueOn, request.clockStartedAt);
+  return arcDeadlineBasis(rule, rule.days === days ? "statute" : "association", days);
+}
+
+export function toPublicRequest(
+  request: ArcRequest,
+  checklistComplete: boolean,
+  today: string = new Date().toISOString(),
+): PublicArcRequest {
   return {
     id: requestPublicId(request.id),
     orgId: orgPublicId(request.orgId),
@@ -127,6 +143,10 @@ export function toPublicRequest(request: ArcRequest, checklistComplete: boolean)
     clockStartedAt: request.clockStartedAt,
     decisionDueOn: request.decisionDueOn,
     decidedAt: request.decidedAt,
+    deadlineRule: request.deadlineRule,
+    deadlineMissedAt: request.deadlineMissedAt,
+    daysRemaining:
+      request.decisionDueOn && request.status === "under_review" ? arcDaysRemaining(request.decisionDueOn, today) : null,
     checklistComplete,
     createdAt: request.createdAt,
     updatedAt: request.updatedAt,
@@ -166,6 +186,7 @@ export function toPublicStatus(
     clockStartedAt: request.clockStartedAt,
     decisionDueOn: request.decisionDueOn,
     decidedAt: request.decidedAt,
+    deadlineBasis: deadlineBasisOf(request),
     checklist,
     documents: documents.map((d) => ({
       checklistKey: d.checklistKey,

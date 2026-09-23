@@ -25,6 +25,11 @@
       "vars": {
         "ENVIRONMENT": "stage"
       },
+      // The decision-deadline clock: 14:00 UTC is early morning in California
+      // and Texas, so a reminder is in the committee's inbox for the day.
+      "triggers": {
+        "crons": ["0 14 * * *"]
+      },
       "d1_databases": [
         {
           "binding": "PLATFORM_DB",
@@ -57,6 +62,11 @@
       "workers_dev": false,
       "vars": {
         "ENVIRONMENT": "prod"
+      },
+      // The decision-deadline clock: 14:00 UTC is early morning in California
+      // and Texas, so a reminder is in the committee's inbox for the day.
+      "triggers": {
+        "crons": ["0 14 * * *"]
       },
       "d1_databases": [
         {

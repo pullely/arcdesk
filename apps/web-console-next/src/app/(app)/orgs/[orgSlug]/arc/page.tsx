@@ -40,7 +40,16 @@ function Inner({ orgId, orgSlug, orgName }: { orgId: string; orgSlug: string; or
   const hasBoard = !!board.data;
   const requests = useApiQuery(
     qk.arcRequests(orgId),
-    () => wrap(async () => (await client.arc.listRequests(orgId)).requests),
+    () =>
+      wrap(async () => {
+        const all = (await client.arc.listRequests(orgId)).requests;
+        // Running requests by due date first — the clock is what the committee works to.
+        return [...all].sort((a, b) => {
+          const ad = a.status === "under_review" && a.decisionDueOn ? a.decisionDueOn : "9999";
+          const bd = b.status === "under_review" && b.decisionDueOn ? b.decisionDueOn : "9999";
+          return ad === bd ? b.createdAt.localeCompare(a.createdAt) : ad.localeCompare(bd);
+        });
+      }),
     { enabled: hasBoard },
   );
   const [editing, setEditing] = React.useState(false);
@@ -258,6 +267,7 @@ function RequestsTable({ requests, orgSlug }: { requests: PublicArcRequest[]; or
           <TH>Request</TH>
           <TH>Applicant</TH>
           <TH>Status</TH>
+          <TH>Decision due</TH>
           <TH>Submitted</TH>
         </TR>
       </THead>
@@ -279,11 +289,30 @@ function RequestsTable({ requests, orgSlug }: { requests: PublicArcRequest[]; or
               <TD>
                 <Badge variant={s.variant}>{s.label}</Badge>
               </TD>
+              <TD>
+                <DueBadge request={r} />
+              </TD>
               <TD className="text-xs text-muted-foreground">{r.submittedAt.slice(0, 10)}</TD>
             </TR>
           );
         })}
       </TBody>
     </Table>
+  );
+}
+
+/** The clock, at a glance: red once missed or due within 3 days, amber within 14. */
+function DueBadge({ request }: { request: PublicArcRequest }) {
+  if (request.status !== "under_review" || !request.decisionDueOn || request.daysRemaining === null) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+  const d = request.daysRemaining;
+  const variant = d < 0 || d <= 3 ? "destructive" : d <= 14 ? "warning" : "secondary";
+  const label = d < 0 ? `missed by ${-d}d` : d === 0 ? "due today" : `${d}d left`;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <Badge variant={variant}>{label}</Badge>
+      <span className="text-[11px] text-muted-foreground">{request.decisionDueOn}</span>
+    </div>
   );
 }

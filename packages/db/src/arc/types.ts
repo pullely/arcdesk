@@ -86,6 +86,8 @@ export interface ArcRequest {
   clockStartedAt: string | null;
   decisionDueOn: string | null;
   decidedAt: string | null;
+  deadlineRule: string | null;
+  deadlineMissedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -122,6 +124,8 @@ export type CreateArcDocumentInput = ArcDocument;
 
 export interface ListArcRequestsFilter {
   status?: string | undefined;
+  /** Only running requests due on or before this ISO date, soonest first (AD3). */
+  dueOnOrBefore?: string | undefined;
   limit: number;
   /** Keyset cursor: requests created strictly before this (createdAt, id). */
   before?: { createdAt: string; id: string } | undefined;
@@ -228,4 +232,17 @@ export interface ArcRepository {
   markLetterEmailed(decisionId: string, at: string): Promise<void>;
   /** Close an under-review request with its outcome; null when it was not under review. */
   closeRequest(requestId: string, status: string, decidedAt: string): Promise<ArcRequest | null>;
+
+  // ── AD3 ──
+  /** Record the due date and the rule it came from. First write wins: a due date never moves. */
+  setDeadline(requestId: string, dueOn: string, rule: string): Promise<ArcRequest | null>;
+  /** Every request whose clock is running (under review), with or without a due date yet. */
+  listRunning(limit: number): Promise<ArcRequest[]>;
+  /** Incomplete requests, for the nightly pass that heals a clock start a crash interrupted. */
+  listIncomplete(limit: number): Promise<ArcRequest[]>;
+  /** Insert a reminder rung; false when that rung was already sent. */
+  claimReminder(input: { id: string; orgId: string; requestId: string; offsetDays: number; recipients: string; sentAt: string }): Promise<boolean>;
+  /** Flag the missed deadline once; null when it was already flagged or the request is no longer running. */
+  markMissed(requestId: string, at: string): Promise<ArcRequest | null>;
+  listReminders(requestId: string): Promise<{ offsetDays: number; recipients: string; sentAt: string }[]>;
 }

@@ -184,6 +184,7 @@ describe("the letter", () => {
     id: "r", orgId: ORG_UUID, boardId: "b", number: 7, category: "solar", title: "Rooftop solar", description: "",
     propertyAddress: "12 Oak Hollow Ln", applicantName: "Dana Reyes", applicantEmail: "d@e.co", status: "under_review",
     submittedAt: "2026-09-01T10:00:00.000Z", clockStartedAt: "2026-09-02T10:00:00.000Z", decisionDueOn: null, decidedAt: null,
+    deadlineRule: null, deadlineMissedAt: null,
     createdAt: "", updatedAt: "",
   };
   const tally = { approve: 2, approve_with_conditions: 1, deny: 0, abstain: 0 };

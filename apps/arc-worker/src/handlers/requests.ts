@@ -59,6 +59,15 @@ export async function handleListRequests(
   }
   const limitRaw = Number(params.get("limit") ?? DEFAULT_LIMIT);
   const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, MAX_LIMIT) : DEFAULT_LIMIT;
+  const dueWithinRaw = params.get("due_within");
+  let dueOnOrBefore: string | undefined;
+  if (dueWithinRaw !== null) {
+    const n = Number(dueWithinRaw);
+    if (!Number.isInteger(n) || n < 0 || n > 365) return validationError(requestId, { due_within: ["Whole days, 0–365"] });
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + n);
+    dueOnOrBefore = d.toISOString().slice(0, 10);
+  }
   const cursorRaw = params.get("cursor");
   const before = cursorRaw ? decodeCursor(cursorRaw) : undefined;
   if (cursorRaw && !before) return validationError(requestId, { cursor: ["Malformed cursor"] });
@@ -67,7 +76,7 @@ export async function handleListRequests(
   const db = openDb(env);
   if (!db) return unavailable(requestId);
   try {
-    const rows = await db.arc.listRequests(orgId, { status, limit: limit + 1, before: before ?? undefined });
+    const rows = await db.arc.listRequests(orgId, { status, dueOnOrBefore, limit: limit + 1, before: before ?? undefined });
     const page = rows.slice(0, limit);
     const complete = await completeness(db, page);
     const next = rows.length > limit ? encodeCursor(page[page.length - 1]!) : null;

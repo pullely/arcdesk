@@ -79,3 +79,45 @@ export async function sendDecided(
   );
   return result.ok;
 }
+
+export interface ReminderFacts {
+  rung: number;
+  daysRemaining: number;
+  basis: string;
+  deemedApproved: boolean;
+  address: string;
+  role: "contact" | "escalation";
+}
+
+/** One rung of the deadline ladder, to one board address. */
+export async function sendDeadlineReminder(
+  env: Env,
+  requestId: string,
+  board: ArcBoard,
+  request: ArcRequest,
+  facts: ReminderFacts,
+): Promise<boolean> {
+  const result = await enqueueNotification(
+    env,
+    { internalActor: "arc-worker", actorSubjectType: "system", actorSubjectId: "arc-clock", requestId },
+    {
+      orgId: request.orgId,
+      category: "product",
+      templateKey: "arc.deadline.reminder",
+      templateData: {
+        associationName: board.associationName,
+        reference: arcRequestReference(request.number),
+        title: request.title,
+        propertyAddress: request.propertyAddress,
+        dueOn: request.decisionDueOn,
+        daysRemaining: facts.daysRemaining,
+        missed: facts.rung < 0,
+        deemedApproved: facts.deemedApproved,
+        basis: facts.basis,
+      },
+      recipient: { channel: "email", address: facts.address.toLowerCase() },
+      idempotencyKey: buildIdempotencyKey("arc.deadline.reminder", requestPublicId(request.id), String(facts.rung), facts.role),
+    },
+  );
+  return result.ok;
+}
