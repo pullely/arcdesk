@@ -37,7 +37,7 @@ many members). The console gains the board settings and requests list pages.
 - a PDF uploaded through the public lane streams back byte-for-byte (same SHA-256) from R2
 - the status link answers for the right token and `404` for any other
 
-## AD2 — the review-board workflow
+## AD2 — the review-board workflow ✅
 
 Migration `210_arc_review` (comments, votes, decisions, `arc_boards.appeal_text`).
 `arc-worker` gains comments, the vote upsert with conditions and the tally, and
