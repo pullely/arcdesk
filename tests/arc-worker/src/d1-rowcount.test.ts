@@ -50,5 +50,18 @@ describe("trap 22: rowCount after a write on D1", () => {
     const started = await arc.tryStartClock(request.id, NOW);
     expect(started?.clockStartedAt).toBe(NOW);
     expect(await arc.tryStartClock(request.id, NOW)).toBeNull();
+
+    // AD3: a reminder rung is claimed by INSERT … ON CONFLICT DO NOTHING
+    // RETURNING id — true the first time, false every time after. Counted by
+    // rowCount without RETURNING it would be false both times on D1, and the
+    // ladder would re-send (or never record) every rung.
+    const rung = { orgId: ORG, requestId: request.id, offsetDays: 7, recipients: "a@b.co", sentAt: NOW };
+    expect(await arc.claimReminder({ id: crypto.randomUUID(), ...rung })).toBe(true);
+    expect(await arc.claimReminder({ id: crypto.randomUUID(), ...rung })).toBe(false);
+    expect(await arc.listReminders(request.id)).toHaveLength(1);
+
+    // …and the missed flag is set once, then never again.
+    expect((await arc.markMissed(request.id, NOW))?.deadlineMissedAt).toBe(NOW);
+    expect(await arc.markMissed(request.id, "2026-09-24T00:00:00.000Z")).toBeNull();
   });
 });

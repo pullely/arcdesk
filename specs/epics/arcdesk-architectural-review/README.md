@@ -25,14 +25,14 @@ homeowner. Nobody has to remember a deadline: the nightly clock does.
 
 | Field | Value |
 |-------|-------|
-| Status | In progress |
+| Status | ✅ Shipped |
 | Cluster | **AD** (AD0–AD3) |
 | Owner(s) | `apps/arc-worker` (the resource, the public form, the clock) · `apps/api-edge` (the facade) · `packages/db` (migrations `200`–`220`) · `packages/contracts` + `packages/sdk` (the wire) · `infra/terraform/cloudflare-r2` (the document bucket) · `apps/notifications-worker` (the templates) · `apps/web-console-next` (the surface) |
 | Builds on | `cirrus baseline-v12` — organizations as associations, members as the committee, the policy engine for who may vote and decide, `notifications-worker` for email, the audit trail in `events-worker`, api-edge rate limiting |
 | Changes | Adds one bounded context (`arc`), one worker, one R2 bucket per environment and one cron trigger; every baseline context is reused, none is modified beyond new actions, templates and a subject prefix |
 | Decisions locked | (1) An association is a cirrus organization; the committee is its members — no second tenancy axis. (2) The clock starts only when every required checklist item has a document in R2; the submission date alone never starts it. (3) Deadline = the stricter of the state rule for the request's category and the association's own review period; rules are data in `packages/contracts`, each with its citation. (4) The homeowner never has an account: a hashed, unguessable status token is their capability. (5) Decision letters are rendered in the worker as PDF, stored immutably in R2, and are the record — not the email. |
 | Gate | AD1 is the first user-visible change (the public form). AD2 makes the board usable. AD3 is what makes a missed deadline impossible to miss. |
-| Shipped as | |
+| Shipped as | AD0 #6 (AD-1, the spec) · AD1 #11 (AD-2, the public request form, with the cirrus D1 fix) · AD2 #12 (AD-3, the review-board workflow) · AD3 #13 (AD-4, the decision-deadline clock) — `arcdesk-arc-worker-{stage,prod}` behind `https://arcdesk-api-edge-{stage,prod}.nexo-7be.workers.dev`, documents in `arcdesk-arc-docs-{stage,prod}` (R2), nightly clock `0 14 * * *`. Open: risk AD-A (appeal wording needs HOA-attorney review). |
 
 ## Read order
 

@@ -1,0 +1,21 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: AD-4
+spec:
+  goal: Every running request has a decision due date from the stricter of its state rule and the association's review period, and a nightly clock walks the 14/7/3/1/0-day reminder ladder and flags a missed deadline — each rung sent once and only once.
+  affects:
+    - default/arcdesk/db
+    - default/arcdesk/db-migrate
+    - default/arcdesk/contracts
+    - default/arcdesk/arc-worker
+    - default/arcdesk/arc-worker-tests
+    - default/arcdesk/notifications-worker
+    - default/arcdesk/web-console-next
+  doneWhen:
+    - migration 220_arc_clock is in the manifest and applied on stage and prod
+    - a California solar request is due clock_started_at + 45 days even when the board's own period is longer; a request with no statutory rule uses the board's period
+    - the clock, run twice for the same day, sends each rung exactly once (the unique index holds)
+    - a request past its due date is flagged deadline_missed_at once and escalated with the rule's citation
+    - the cron trigger is deployed on stage and prod
+  gates: []

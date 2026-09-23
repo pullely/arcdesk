@@ -88,6 +88,8 @@ function mapRequest(row: Row): ArcRequest {
     clockStartedAt: str(row.clock_started_at),
     decisionDueOn: str(row.decision_due_on),
     decidedAt: str(row.decided_at),
+    deadlineRule: str(row.deadline_rule),
+    deadlineMissedAt: str(row.deadline_missed_at),
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -116,7 +118,7 @@ const CHECKLIST_COLUMNS = `id, org_id, board_id, key, label, required, categorie
 
 const REQUEST_COLUMNS = `id, org_id, board_id, number, category, title, description, property_address,
   applicant_name, applicant_email, status, submitted_at, clock_started_at, decision_due_on,
-  decided_at, created_at, updated_at`;
+  decided_at, deadline_rule, deadline_missed_at, created_at, updated_at`;
 
 function mapComment(row: Row): ArcComment {
   return {
@@ -372,6 +374,10 @@ export function createArcRepository(executor: SqlExecutor): ArcRepository {
         params.push(filter.status);
         where += ` AND status = $${params.length}`;
       }
+      if (filter.dueOnOrBefore) {
+        params.push(filter.dueOnOrBefore);
+        where += ` AND status = 'under_review' AND decision_due_on IS NOT NULL AND decision_due_on <= $${params.length}`;
+      }
       if (filter.before) {
         params.push(filter.before.createdAt, filter.before.id);
         where += ` AND (created_at < $${params.length - 1} OR (created_at = $${params.length - 1} AND id < $${params.length}))`;
@@ -379,7 +385,7 @@ export function createArcRepository(executor: SqlExecutor): ArcRepository {
       params.push(filter.limit);
       const result = await executor.execute<Row>(
         `SELECT ${REQUEST_COLUMNS} FROM arc_requests WHERE ${where}
-          ORDER BY created_at DESC, id DESC LIMIT $${params.length}`,
+          ORDER BY ${filter.dueOnOrBefore ? "decision_due_on ASC, " : ""}created_at DESC, id DESC LIMIT $${params.length}`,
         params,
       );
       return result.rows.map(mapRequest);
@@ -555,6 +561,68 @@ export function createArcRepository(executor: SqlExecutor): ArcRepository {
         [requestId, status, decidedAt],
       );
       return row ? mapRequest(row) : null;
+    },
+
+    async setDeadline(requestId, dueOn, rule) {
+      const row = await one(
+        `UPDATE arc_requests SET decision_due_on = $2, deadline_rule = $3
+          WHERE id = $1 AND decision_due_on IS NULL AND clock_started_at IS NOT NULL
+          RETURNING ${REQUEST_COLUMNS}`,
+        [requestId, dueOn, rule],
+      );
+      return row ? mapRequest(row) : null;
+    },
+
+    async listRunning(limit) {
+      const result = await executor.execute<Row>(
+        `SELECT ${REQUEST_COLUMNS} FROM arc_requests WHERE status = 'under_review'
+          ORDER BY decision_due_on ASC, id ASC LIMIT $1`,
+        [limit],
+      );
+      return result.rows.map(mapRequest);
+    },
+
+    async listIncomplete(limit) {
+      const result = await executor.execute<Row>(
+        `SELECT ${REQUEST_COLUMNS} FROM arc_requests WHERE status = 'incomplete'
+          ORDER BY created_at ASC, id ASC LIMIT $1`,
+        [limit],
+      );
+      return result.rows.map(mapRequest);
+    },
+
+    async claimReminder(input) {
+      const result = await executor.execute<Row>(
+        `INSERT INTO arc_deadline_reminders (id, org_id, request_id, offset_days, recipients, sent_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (request_id, offset_days) DO NOTHING
+         RETURNING id`,
+        [input.id, input.orgId, input.requestId, input.offsetDays, input.recipients, input.sentAt],
+      );
+      return result.rows.length === 1;
+    },
+
+    async markMissed(requestId, at) {
+      const row = await one(
+        `UPDATE arc_requests SET deadline_missed_at = $2
+          WHERE id = $1 AND status = 'under_review' AND deadline_missed_at IS NULL
+          RETURNING ${REQUEST_COLUMNS}`,
+        [requestId, at],
+      );
+      return row ? mapRequest(row) : null;
+    },
+
+    async listReminders(requestId) {
+      const result = await executor.execute<Row>(
+        `SELECT offset_days, recipients, sent_at FROM arc_deadline_reminders
+          WHERE request_id = $1 ORDER BY offset_days DESC`,
+        [requestId],
+      );
+      return result.rows.map((r) => ({
+        offsetDays: Number(r.offset_days),
+        recipients: String(r.recipients ?? ""),
+        sentAt: String(r.sent_at),
+      }));
     },
   };
 }

@@ -12,6 +12,7 @@ import { nowIso, openDb } from "../context.js";
 import { errorResponse, notFound, successResponse, unavailable, validationError } from "../http.js";
 import { documentPublicId, requestPublicId } from "../ids.js";
 import { sendRequestReceived } from "../notify.js";
+import { applyDeadline } from "../clock.js";
 import {
   applies,
   checklistState,
@@ -109,7 +110,7 @@ export async function handleSubmit(
       now,
     });
     const started = await db.arc.tryStartClock(created.id, now);
-    if (started) created = started;
+    if (started) created = await applyDeadline(db, board, started);
 
     const reference = arcRequestReference(created.number);
     await recordAudit(db.executor, {
@@ -263,7 +264,7 @@ export async function handleUpload(
 
     const started = await db.arc.tryStartClock(arcRequest.id, now);
     if (started) {
-      arcRequest = started;
+      arcRequest = await applyDeadline(db, board, started);
       await auditClockStarted(db, board, started, requestId, now);
     }
 

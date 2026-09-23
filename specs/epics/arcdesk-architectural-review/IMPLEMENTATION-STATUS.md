@@ -7,8 +7,8 @@ the code departed from `design.md`.
 |---|---|---|
 | AD0 — the spec | ✅ landed | #6 |
 | AD1 — the public request form | ✅ landed (AD-2) | #11 |
-| AD2 — the review-board workflow | in review | AD-3 |
-| AD3 — the decision-deadline clock | | |
+| AD2 — the review-board workflow | ✅ landed (AD-3) | #12 |
+| AD3 — the decision-deadline clock | ✅ landed (AD-4) | #13 |
 
 ## Departures from the design
 
@@ -48,3 +48,19 @@ the code departed from `design.md`.
 - Trap 22: the vote upsert, the decision insert and the request close all
   report through `RETURNING`; `markLetterEmailed` is fire-and-forget and
   inspects nothing.
+- **Verified live (stage)**: a second vote replaced the first (one row);
+  a denial without rationale was `422`; the decision rendered a `%PDF-` letter
+  whose SHA-256, served back by status token from R2, equals
+  `arc_decisions.letter_sha256`; a second decision was `409 already_decided`;
+  `arc.request.voted`, `arc.request.decided` and `arc.request.letter_emailed`
+  are in the organization's audit trail.
+- **The appeal wording is a draft (risk AD-A).** It needs HOA-attorney review
+  before a real association relies on the letter.
+
+### AD3 (task AD-4)
+
+- Trap 22: a rung is claimed with `INSERT … ON CONFLICT DO NOTHING RETURNING id`
+  and counted from the returned rows; the missed flag is
+  `UPDATE … WHERE deadline_missed_at IS NULL RETURNING`. Both pinned through the
+  real D1 executor on real SQLite in `d1-rowcount.test.ts`.
+- SMS reminders are not built (no provider credential).

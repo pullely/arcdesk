@@ -76,6 +76,8 @@ export const ARC_EVENT_TYPES = [
   "arc.request.voted",
   "arc.request.decided",
   "arc.request.letter_emailed",
+  "arc.request.reminder_sent",
+  "arc.request.deadline_missed",
 ] as const;
 export type ArcEventType = (typeof ARC_EVENT_TYPES)[number];
 
@@ -141,6 +143,11 @@ export interface PublicArcRequest {
   clockStartedAt: string | null;
   decisionDueOn: string | null;
   decidedAt: string | null;
+  /** Key of the rule that set the due date (AD3), e.g. "CA.solar". */
+  deadlineRule: string | null;
+  deadlineMissedAt: string | null;
+  /** Whole days from today (UTC) to the due date; negative once missed. Null before the clock starts. */
+  daysRemaining: number | null;
   checklistComplete: boolean;
   createdAt: string;
   updatedAt: string;
@@ -164,6 +171,8 @@ export interface ArcPublicStatus {
   clockStartedAt: string | null;
   decisionDueOn: string | null;
   decidedAt: string | null;
+  /** The rule behind the due date, in words, with its citation. */
+  deadlineBasis: string | null;
   checklist: ArcChecklistState[];
   documents: { checklistKey: string | null; filename: string; byteSize: number; uploadedAt: string }[];
   /** Comments the committee chose to show the homeowner. */
@@ -364,4 +373,97 @@ export interface CreateArcDecisionRequest {
 }
 export interface ArcDecisionResponse {
   decision: PublicArcDecision;
+}
+
+// ── AD3: the decision-deadline clock ───────────────────────
+
+export interface ArcDeadlineRule {
+  key: string;
+  state: ArcState;
+  /** The category it applies to; null means "every category" (the association's documents). */
+  category: ArcRequestCategory | null;
+  /** Statutory days from a complete application; null means the association's own period governs. */
+  days: number | null;
+  /** Whether the statute deems the application approved when the deadline passes undecided. */
+  deemedApproved: boolean;
+  citation: string;
+}
+
+/**
+ * The state rules the clock knows. Statutory clocks only where a statute sets
+ * one; everything else runs on the association's own review period. The
+ * applied deadline is always the EARLIER of the two — an error in the
+ * association's figure can only make the clock stricter. Legal content: see
+ * risks AD-A before changing a number.
+ */
+export const ARC_DEADLINE_RULES: readonly ArcDeadlineRule[] = [
+  { key: "CA.solar", state: "CA", category: "solar", days: 45, deemedApproved: true, citation: "Cal. Civ. Code \u00a7714" },
+  { key: "CA.ev_charger", state: "CA", category: "ev_charger", days: 60, deemedApproved: true, citation: "Cal. Civ. Code \u00a74745" },
+  { key: "CA.documents", state: "CA", category: null, days: null, deemedApproved: false, citation: "Cal. Civ. Code \u00a74765 and the association's governing documents" },
+  { key: "TX.documents", state: "TX", category: null, days: null, deemedApproved: false, citation: "Tex. Prop. Code \u00a7209.00505 and the association's governing documents" },
+  { key: "OTHER.documents", state: "OTHER", category: null, days: null, deemedApproved: false, citation: "the association's governing documents" },
+];
+
+/** Reminder rungs, in days before the due date. -1 is the missed-deadline escalation. */
+export const ARC_REMINDER_LADDER = [14, 7, 3, 1, 0] as const;
+export const ARC_MISSED_RUNG = -1;
+/** From this rung down, the escalation address is copied as well as the contact. */
+export const ARC_ESCALATION_FROM_RUNG = 3;
+
+export function arcRuleFor(state: string, category: string): ArcDeadlineRule {
+  return (
+    ARC_DEADLINE_RULES.find((r) => r.state === state && r.category === category) ??
+    ARC_DEADLINE_RULES.find((r) => r.state === state && r.category === null) ??
+    ARC_DEADLINE_RULES.find((r) => r.key === "OTHER.documents")!
+  );
+}
+
+function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The due date for a request whose clock started at `clockStartedAt`: the
+ * earlier of the statutory clock (when one applies) and the association's own
+ * review period, counted in calendar days from the UTC date the clock started.
+ */
+export function arcDeadline(
+  state: string,
+  category: string,
+  reviewDays: number,
+  clockStartedAt: string,
+): { dueOn: string; rule: ArcDeadlineRule; days: number; governedBy: "statute" | "association" } {
+  const rule = arcRuleFor(state, category);
+  const statutory = rule.days;
+  const days = statutory !== null && statutory < reviewDays ? statutory : reviewDays;
+  const governedBy = statutory !== null && statutory <= reviewDays ? "statute" : "association";
+  return { dueOn: addDays(clockStartedAt.slice(0, 10), days), rule, days, governedBy };
+}
+
+/** Whole UTC days from `todayIso` (a date or timestamp) to `dueOn`. */
+export function arcDaysRemaining(dueOn: string, todayIso: string): number {
+  const a = Date.parse(`${todayIso.slice(0, 10)}T00:00:00.000Z`);
+  const b = Date.parse(`${dueOn}T00:00:00.000Z`);
+  return Math.round((b - a) / 86_400_000);
+}
+
+/**
+ * The rung a request is on: the tightest rung already reached, or the missed
+ * rung past the due date, or null while more than 14 days remain. Only this
+ * one rung is ever sent on a run — a request that starts with five days left
+ * gets the 7-day reminder, not the 14- and 7-day reminders at once.
+ */
+export function arcCurrentRung(daysRemaining: number): number | null {
+  if (daysRemaining < 0) return ARC_MISSED_RUNG;
+  let current: number | null = null;
+  for (const rung of ARC_REMINDER_LADDER) if (daysRemaining <= rung) current = rung;
+  return current;
+}
+
+export function arcDeadlineBasis(rule: ArcDeadlineRule, governedBy: "statute" | "association", days: number): string {
+  return governedBy === "statute"
+    ? `${days} days from a complete application under ${rule.citation}${rule.deemedApproved ? " (deemed approved if not decided in time)" : ""}`
+    : `${days} days from a complete application under the association's review period (${rule.citation})`;
 }

@@ -37,7 +37,7 @@ many members). The console gains the board settings and requests list pages.
 - a PDF uploaded through the public lane streams back byte-for-byte (same SHA-256) from R2
 - the status link answers for the right token and `404` for any other
 
-## AD2 — the review-board workflow
+## AD2 — the review-board workflow ✅
 
 Migration `210_arc_review` (comments, votes, decisions, `arc_boards.appeal_text`).
 `arc-worker` gains comments, the vote upsert with conditions and the tally, and
@@ -54,7 +54,7 @@ The console gains the request detail page.
 - a decision writes a `%PDF-` letter to R2 whose SHA-256 matches `arc_decisions.letter_sha256`, served to the homeowner by token
 - `arc.request.voted` and `arc.request.decided` appear in the organization's audit trail
 
-## AD3 — the decision-deadline clock
+## AD3 — the decision-deadline clock ✅
 
 Migration `220_arc_clock` (`arc_deadline_reminders`, `deadline_rule`,
 `deadline_missed_at`). `ARC_DEADLINE_RULES` in `packages/contracts`, with

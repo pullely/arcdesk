@@ -201,5 +201,14 @@ export const manifest: MigrationManifest = {
       description:
         "Architectural review workflow (AD2) — committee comments (internal or shown to the homeowner), one vote per member per request (UNIQUE request_id, voter_subject_id), and the single immutable decision per request with its PDF letter's R2 key, SHA-256 and letter-link token hash; plus the board's own appeal wording",
     },
+    {
+      id: "220_arc_clock",
+      context: "arc",
+      path: "220_arc_clock/up.sql",
+      checksum:
+        "1de36b26e727616f90eea1f03a907fd907528ab40e8b18cd7309349ad5f3940d",
+      description:
+        "Architectural review decision-deadline clock (AD3) — the rule behind each request's due date, the once-only missed-deadline flag, and one arc_deadline_reminders row per rung sent, UNIQUE (request_id, offset_days) so no re-run or overlapping cron sends a rung twice",
+    },
   ],
 };

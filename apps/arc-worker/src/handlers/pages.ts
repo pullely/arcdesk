@@ -104,7 +104,7 @@ function renderStatus(status: ArcPublicStatus, token: string): string {
     .map((d) => `<li>${e(d.filename)} <span class="muted">(${Math.max(1, Math.round(d.byteSize / 1024))} KB, ${e(d.uploadedAt.slice(0, 10))})</span></li>`)
     .join("");
   const clock = status.clockStartedAt
-    ? `<p>Complete since <strong>${e(status.clockStartedAt.slice(0, 10))}</strong>${status.decisionDueOn ? ` — decision due by <strong>${e(status.decisionDueOn)}</strong>` : ""}.</p>`
+    ? `<p>Complete since <strong>${e(status.clockStartedAt.slice(0, 10))}</strong>${status.decisionDueOn ? ` — decision due by <strong>${e(status.decisionDueOn)}</strong>` : ""}.</p>${status.deadlineBasis && !status.decidedAt ? `<p class="muted">${e(status.deadlineBasis)}.</p>` : ""}`
     : `<p class="todo">The committee's clock has not started: upload every document marked “needed”.</p>`;
   const decision = status.decision
     ? `<div class="card"><h2 style="margin-top:0">Decision: ${e(ARC_DECISION_OUTCOME_LABELS[status.decision.outcome] ?? status.decision.outcome)}</h2>
