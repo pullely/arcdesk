@@ -8,7 +8,7 @@ the code departed from `design.md`.
 | AD0 — the spec | ✅ landed | #6 |
 | AD1 — the public request form | ✅ landed (AD-2) | #11 |
 | AD2 — the review-board workflow | ✅ landed (AD-3) | #12 |
-| AD3 — the decision-deadline clock | in review | AD-4 |
+| AD3 — the decision-deadline clock | ✅ landed (AD-4) | #13 |
 
 ## Departures from the design
 

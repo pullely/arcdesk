@@ -54,7 +54,7 @@ The console gains the request detail page.
 - a decision writes a `%PDF-` letter to R2 whose SHA-256 matches `arc_decisions.letter_sha256`, served to the homeowner by token
 - `arc.request.voted` and `arc.request.decided` appear in the organization's audit trail
 
-## AD3 — the decision-deadline clock
+## AD3 — the decision-deadline clock ✅
 
 Migration `220_arc_clock` (`arc_deadline_reminders`, `deadline_rule`,
 `deadline_missed_at`). `ARC_DEADLINE_RULES` in `packages/contracts`, with
