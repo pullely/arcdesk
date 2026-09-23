@@ -1,0 +1,48 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: AD-2
+spec:
+  goal: A homeowner can file an architectural request from a public form, upload plans to R2 against the board's checklist, and follow it by a status link — and the decision clock starts only when every required document is in.
+  # Component refs, fully qualified (bare names and paths do not match).
+  # identity-worker, membership-worker and web-console-next carry the SOLO_MODE
+  # switch (an association's committee is several members of one organization,
+  # so the Solo profile goes off). Every other worker is here for runbook trap
+  # 17: this task changes packages/db (the trap-16 D1 fix to the events and
+  # membership repositories) and packages/policy-engine (the arc.* actions), and
+  # a worker only redeploys when its own component.yaml changes.
+  affects:
+    - default/arcdesk/db
+    - default/arcdesk/db-tests
+    - default/arcdesk/db-migrate
+    - default/arcdesk/contracts
+    - default/arcdesk/sdk
+    - default/arcdesk/policy-engine
+    - default/arcdesk/policy-engine-tests
+    - default/arcdesk/cloudflare-r2
+    - default/arcdesk/arc-worker
+    - default/arcdesk/arc-worker-tests
+    - default/arcdesk/api-edge
+    - default/arcdesk/events-worker
+    - default/arcdesk/notifications-worker
+    - default/arcdesk/identity-worker
+    - default/arcdesk/membership-worker
+    - default/arcdesk/web-console-next
+    - default/arcdesk/web-console-next-tests
+    - default/arcdesk/admin-worker
+    - default/arcdesk/billing-worker
+    - default/arcdesk/config-worker
+    - default/arcdesk/integrations-worker
+    - default/arcdesk/metering-worker
+    - default/arcdesk/policy-worker
+    - default/arcdesk/projects-worker
+    - default/arcdesk/webhooks-worker
+  doneWhen:
+    - the trap-16 D1 fix (factory/patches/cirrus-d1-fix.patch) is applied, so audited writes and organization create work on D1
+    - migration 200_arc_core is in the manifest, replays green against node:sqlite, and is applied on stage and prod
+    - GET /v1/public/arc/boards/{slug} answers through api-edge on stage and prod, and /arc/f/{slug} serves the form
+    - a request submitted without every required document is incomplete with clock_started_at null
+    - uploading the last required document flips it to under_review and sets clock_started_at in one conditional statement
+    - a PDF uploaded through the public lane streams back byte-for-byte (same SHA-256) from R2 on stage and prod
+    - the status link answers for the right token and 404 for any other
+  gates: []

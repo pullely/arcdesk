@@ -169,7 +169,47 @@ const renderInvitationAccepted: TemplateRenderer = (data, opts) => {
   return { subject, html, text };
 };
 
+/**
+ * Arcdesk: the homeowner's receipt for an architectural request. The status
+ * link IS the message (their only credential; the database keeps its hash),
+ * the same exception the magic-link code makes.
+ */
+const renderArcRequestReceived: TemplateRenderer = (data, opts) => {
+  const association = str(data, "associationName");
+  const reference = str(data, "reference");
+  const title = str(data, "title");
+  const address = str(data, "propertyAddress");
+  const statusUrl = str(data, "statusUrl");
+  const started = data.clockStarted === true;
+  const brand = opts.brandName ?? "";
+  const subject = `${reference}: your architectural request to ${association || "your association"}`;
+  const nextStep = started
+    ? "Your request is complete and the committee's review clock has started."
+    : "Upload every document marked \u201cneeded\u201d on your status page \u2014 the committee's review clock starts once your request is complete.";
+
+  const text = [
+    `We received ${reference}: ${title}, at ${address}.`,
+    nextStep,
+    `Your status page (keep this link \u2014 it is the only way back to your request):`,
+    statusUrl,
+  ].join("\n\n");
+
+  const html = htmlShell(
+    `Request ${escapeHtml(reference)} received`,
+    [
+      `<p style="margin:0 0 16px;font-size:14px;">${escapeHtml(association)} received <strong>${escapeHtml(title)}</strong> at ${escapeHtml(address)}.</p>`,
+      `<p style="margin:0 0 16px;font-size:14px;">${escapeHtml(nextStep)}</p>`,
+      `<p style="margin:0 0 16px;"><a href="${escapeHtml(statusUrl)}" style="display:inline-block;padding:10px 16px;background:#2f6b5a;color:#ffffff;border-radius:6px;text-decoration:none;font-size:14px;">Open your status page</a></p>`,
+      '<p style="margin:0;font-size:13px;color:#6b6b80;">Keep this email: the link is the only way back to your request.</p>',
+    ].join(""),
+    escapeHtml(brand ? `Sent by ${brand} on behalf of ${association}` : `Sent on behalf of ${association}`),
+  );
+
+  return { subject, html, text };
+};
+
 const TEMPLATES: Record<string, TemplateRenderer> = {
+  "arc.request.received": renderArcRequestReceived,
   "auth.magic_link": renderMagicLink,
   "invitation.created": renderInvitationCreated,
   "invitation.accepted": renderInvitationAccepted,

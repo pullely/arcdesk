@@ -183,5 +183,14 @@ export const manifest: MigrationManifest = {
       description:
         "Connection pointer on the inbound-delivery inbox (nullable connection_id + partial index) — lets the per-connection delivery log scope precisely; attributed by the IG2 cron drain",
     },
+    {
+      id: "200_arc_core",
+      context: "arc",
+      path: "200_arc_core/up.sql",
+      checksum:
+        "02cbe715843a4bc6d5ce869c905bb7bf52634948a98a13904696e42783e06c34",
+      description:
+        "Architectural review foundation (AD1) — the association's review board (one per organization), its document checklist, the homeowner's request with a hashed status token, and the documents stored in R2; clock_started_at is written only when every required checklist item has a document",
+    },
   ],
 };

@@ -36,12 +36,22 @@ export function memberPublicId(uuid: string): string {
   return `mem_${uuidToHex(uuid)}`;
 }
 
+export function arcRequestPublicId(uuid: string): string {
+  return `arq_${uuidToHex(uuid)}`;
+}
+
+export function arcBoardPublicId(uuid: string): string {
+  return `arb_${uuidToHex(uuid)}`;
+}
+
 const SUBJECT_KIND_PREFIX: Record<string, (uuid: string) => string> = {
   organization: orgPublicId,
   project: projectPublicId,
   environment: environmentPublicId,
   invitation: invitationPublicId,
   member: memberPublicId,
+  arc_request: arcRequestPublicId,
+  arc_board: arcBoardPublicId,
 };
 
 export function toPublicId(kind: string, rawId: string): string {

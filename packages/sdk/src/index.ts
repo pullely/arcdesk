@@ -22,6 +22,7 @@ import { MeteringClient } from "./metering.js";
 import { NotificationsClient } from "./notifications.js";
 import { OrganizationsClient } from "./organizations.js";
 import { ProjectsClient } from "./projects.js";
+import { ArcClient } from "./arc.js";
 import { SecurityEventsClient } from "./securityEvents.js";
 import { WebhooksClient } from "./webhooks.js";
 import { Transport, type ClientOptions } from "./transport.js";
@@ -29,6 +30,7 @@ import { Transport, type ClientOptions } from "./transport.js";
 export class Arcdesk {
   readonly organizations: OrganizationsClient;
   readonly projects: ProjectsClient;
+  readonly arc: ArcClient;
   readonly environments: EnvironmentsClient;
   readonly memberships: MembershipsClient;
   readonly apiKeys: ApiKeysClient;
@@ -48,6 +50,7 @@ export class Arcdesk {
     this.transport = new Transport(options);
     this.organizations = new OrganizationsClient(this.transport);
     this.projects = new ProjectsClient(this.transport);
+    this.arc = new ArcClient(this.transport);
     this.environments = new EnvironmentsClient(this.transport);
     this.memberships = new MembershipsClient(this.transport);
     this.apiKeys = new ApiKeysClient(this.transport);
@@ -66,6 +69,7 @@ export class Arcdesk {
 // Resource clients (also reachable via `client.<resource>`).
 export { OrganizationsClient } from "./organizations.js";
 export { ProjectsClient } from "./projects.js";
+export { ArcClient } from "./arc.js";
 export { EnvironmentsClient } from "./environments.js";
 export { MembershipsClient } from "./memberships.js";
 export {
