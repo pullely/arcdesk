@@ -239,7 +239,42 @@ const renderArcRequestDecided: TemplateRenderer = (data, opts) => {
   return { subject, html, text };
 };
 
+/** Arcdesk: one rung of the decision-deadline ladder, to the review board. */
+const renderArcDeadlineReminder: TemplateRenderer = (data, opts) => {
+  const association = str(data, "associationName");
+  const reference = str(data, "reference");
+  const title = str(data, "title");
+  const address = str(data, "propertyAddress");
+  const dueOn = str(data, "dueOn");
+  const days = Number(data.daysRemaining ?? 0);
+  const missed = data.missed === true;
+  const deemed = data.deemedApproved === true;
+  const basis = str(data, "basis");
+  const brand = opts.brandName ?? "";
+  const when = missed ? `was due ${dueOn} and is still undecided` : days === 0 ? `is due today (${dueOn})` : `is due in ${days} day${days === 1 ? "" : "s"} (${dueOn})`;
+  const subject = missed ? `MISSED: ${reference} decision deadline passed` : `${reference}: decision ${days === 0 ? "due today" : `due in ${days} day${days === 1 ? "" : "s"}`}`;
+  const consequence = missed
+    ? deemed
+      ? "Under the statute that set this deadline, an application not decided in time may be deemed approved. Take advice before acting on it."
+      : "Record a decision as soon as possible and check the association's documents for the consequence of a late decision."
+    : "Record the committee's decision in Arcdesk before the deadline.";
+  const text = [`${association}: the decision on ${reference} (${title}, ${address}) ${when}.`, basis ? `Deadline basis: ${basis}.` : "", consequence]
+    .filter((l) => l.length > 0)
+    .join("\n\n");
+  const html = htmlShell(
+    escapeHtml(missed ? `${reference}: deadline missed` : `${reference}: decision due`),
+    [
+      `<p style="margin:0 0 16px;font-size:14px;">The decision on <strong>${escapeHtml(title)}</strong> at ${escapeHtml(address)} ${escapeHtml(when)}.</p>`,
+      basis ? `<p style="margin:0 0 16px;font-size:13px;color:#6b6b80;">Deadline basis: ${escapeHtml(basis)}.</p>` : "",
+      `<p style="margin:0;font-size:14px;${missed ? "color:#a4541a;font-weight:600;" : ""}">${escapeHtml(consequence)}</p>`,
+    ].join(""),
+    escapeHtml(brand ? `Sent by ${brand} for ${association}'s review board` : `Sent for ${association}'s review board`),
+  );
+  return { subject, html, text };
+};
+
 const TEMPLATES: Record<string, TemplateRenderer> = {
+  "arc.deadline.reminder": renderArcDeadlineReminder,
   "arc.request.decided": renderArcRequestDecided,
   "arc.request.received": renderArcRequestReceived,
   "auth.magic_link": renderMagicLink,
