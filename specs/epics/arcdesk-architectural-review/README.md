@@ -25,7 +25,7 @@ homeowner. Nobody has to remember a deadline: the nightly clock does.
 
 | Field | Value |
 |-------|-------|
-| Status | Draft |
+| Status | In progress |
 | Cluster | **AD** (AD0–AD3) |
 | Owner(s) | `apps/arc-worker` (the resource, the public form, the clock) · `apps/api-edge` (the facade) · `packages/db` (migrations `200`–`220`) · `packages/contracts` + `packages/sdk` (the wire) · `infra/terraform/cloudflare-r2` (the document bucket) · `apps/notifications-worker` (the templates) · `apps/web-console-next` (the surface) |
 | Builds on | `cirrus baseline-v12` — organizations as associations, members as the committee, the policy engine for who may vote and decide, `notifications-worker` for email, the audit trail in `events-worker`, api-edge rate limiting |
