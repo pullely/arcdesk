@@ -298,6 +298,9 @@ export const NOTIFICATIONS_INTERNAL_ACTOR_VALUES = [
   // The public edge forwards end-user preference reads/updates over the
   // service binding with the subject pinned to the resolved session actor.
   "api-edge",
+  // Arcdesk: the architectural review worker emails the homeowner's receipt,
+  // the decision letter and the committee's deadline ladder.
+  "arc-worker",
 ] as const;
 
 export type NotificationsInternalActor =
