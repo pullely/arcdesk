@@ -1,0 +1,13 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: AD-1
+spec:
+  goal: The Arcdesk epic's five design documents are on main and attached to the epic in Orunbase.
+  affects:
+    - specs/epics/arcdesk-architectural-review
+    - tasks
+  doneWhen:
+    - specs/epics/arcdesk-architectural-review holds README.md, design.md, implementation-plan.md, risks-and-open-questions.md and IMPLEMENTATION-STATUS.md on main
+    - orun spec list --epic arcdesk-architectural-review shows all five documents
+  gates: []
