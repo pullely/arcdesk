@@ -57,7 +57,9 @@ export type RouteFamily =
   | "billing"
   | "audit"
   | "notifications"
-  | "integrations";
+  | "integrations"
+  | "arc"
+  | "arc_public";
 
 interface BucketLimits {
   /** Bucket capacity (max tokens). */
@@ -91,6 +93,18 @@ const LIMITS: Record<RouteFamily, FamilyConfig> = {
   project: {
     identity: { limit: 60, windowSec: 60 },
     org: { limit: 300, windowSec: 60 },
+  },
+  // The committee's routes are ordinary org CRUD.
+  arc: {
+    identity: { limit: 60, windowSec: 60 },
+    org: { limit: 300, windowSec: 60 },
+  },
+  // The homeowner's public lane has no account and no org segment, so only the
+  // identity bucket applies — keyed anon:arc_public:<client IP>. Twenty writes a
+  // minute is a form, a dozen uploads and a few retries; it is not a flood.
+  arc_public: {
+    identity: { limit: 20, windowSec: 60 },
+    org: { limit: 20, windowSec: 60 },
   },
   config: {
     identity: { limit: 60, windowSec: 60 },

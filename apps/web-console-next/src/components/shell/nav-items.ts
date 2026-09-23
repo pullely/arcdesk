@@ -65,9 +65,12 @@ export function buildNavSections(scope: NavScope, soloMode: boolean = SOLO_MODE)
         ? [
             // Solo: projects & usage/quota are platform plumbing the B2C user
             // never sees; their surfaces collapse to the Settings (Account) panel.
+            { href: `${orgBase}/arc`, label: "Review board", icon: "ClipboardCheck" },
             { href: `${orgBase}/settings`, label: "Settings", icon: "Settings", subPanel: true },
           ]
         : [
+            // The product itself: the association's architectural review board.
+            { href: `${orgBase}/arc`, label: "Review board", icon: "ClipboardCheck" },
             { href: `${orgBase}/projects`, label: "Projects", icon: "FolderKanban" },
             { href: `${orgBase}/usage`, label: "Usage & quota", icon: "Gauge" },
             // Opens the dedicated settings panel — flagged so the renderer shows a ›.
