@@ -1,4 +1,9 @@
-import { ARC_REQUEST_CATEGORY_LABELS, type ArcPublicBoard, type ArcPublicStatus } from "@saas/contracts/arc";
+import {
+  ARC_DECISION_OUTCOME_LABELS,
+  ARC_REQUEST_CATEGORY_LABELS,
+  type ArcPublicBoard,
+  type ArcPublicStatus,
+} from "@saas/contracts/arc";
 import type { Env } from "../env.js";
 import { openDb } from "../context.js";
 import { escapeHtml as e, htmlResponse } from "../http.js";
@@ -101,11 +106,24 @@ function renderStatus(status: ArcPublicStatus, token: string): string {
   const clock = status.clockStartedAt
     ? `<p>Complete since <strong>${e(status.clockStartedAt.slice(0, 10))}</strong>${status.decisionDueOn ? ` — decision due by <strong>${e(status.decisionDueOn)}</strong>` : ""}.</p>`
     : `<p class="todo">The committee's clock has not started: upload every document marked “needed”.</p>`;
+  const decision = status.decision
+    ? `<div class="card"><h2 style="margin-top:0">Decision: ${e(ARC_DECISION_OUTCOME_LABELS[status.decision.outcome] ?? status.decision.outcome)}</h2>
+<p class="muted">Decided ${e(status.decision.decidedAt.slice(0, 10))}.</p>
+${status.decision.conditions ? `<h2>Conditions</h2><p>${e(status.decision.conditions)}</p>` : ""}
+${status.decision.rationale ? `<h2>${status.decision.outcome === "denied" ? "Reasons" : "Notes"}</h2><p>${e(status.decision.rationale)}</p>` : ""}
+<p><a href="${e(status.decision.letterPath)}">Download the decision letter (PDF)</a> — it explains how to appeal.</p></div>`
+    : "";
+  const messages = status.messages.length
+    ? `<div class="card"><h2 style="margin-top:0">Messages from the committee</h2><ul class="check">${status.messages
+        .map((m) => `<li><div>${e(m.body)}</div><small class="muted">${e(m.createdAt.slice(0, 10))}</small></li>`)
+        .join("")}</ul></div>`
+    : "";
   const body = `
 <h1>${e(status.reference)} · ${e(status.associationName)}</h1>
 <p class="muted">${e(ARC_REQUEST_CATEGORY_LABELS[status.category] ?? status.category)} at ${e(status.propertyAddress)}</p>
 <div class="card"><p><span class="pill">${e(STATUS_LABELS[status.status] ?? status.status)}</span> ${e(status.title)}</p>${clock}
 <p class="muted">Keep this page's address: it is your only link to this request.</p></div>
+${decision}${messages}
 <div class="card"><h2 style="margin-top:0">Checklist</h2><ul class="check">${items || "<li class='muted'>No documents required.</li>"}</ul>
 ${open ? `<h2>Anything else</h2><input type="file" accept="application/pdf,image/png,image/jpeg" data-key="${EXTRA_DOCUMENT_KEY}"><small class="err" data-out="${EXTRA_DOCUMENT_KEY}"></small>` : ""}</div>
 <div class="card"><h2 style="margin-top:0">Uploaded</h2><ul class="check">${docs || "<li class='muted'>Nothing yet.</li>"}</ul></div>`;
@@ -141,7 +159,7 @@ export async function handleStatusPage(env: Env, token: string): Promise<Respons
   try {
     const found = await loadByToken(db, token);
     if (!found) return notFoundPage();
-    return htmlResponse(renderStatus(await buildStatus(db, found.board, found.request), token));
+    return htmlResponse(renderStatus(await buildStatus(db, found.board, found.request, token), token));
   } catch {
     return htmlResponse(page("Unavailable", "<h1>Temporarily unavailable</h1>"), 503);
   } finally {

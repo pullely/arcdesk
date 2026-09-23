@@ -1,0 +1,24 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: AD-3
+spec:
+  goal: The review committee comments, votes with conditions and records a decision; the decision renders a PDF letter with the state's appeal language into R2, emails the homeowner, and is served to them by token.
+  affects:
+    - default/arcdesk/db
+    - default/arcdesk/db-migrate
+    - default/arcdesk/contracts
+    - default/arcdesk/sdk
+    - default/arcdesk/arc-worker
+    - default/arcdesk/arc-worker-tests
+    - default/arcdesk/api-edge
+    - default/arcdesk/notifications-worker
+    - default/arcdesk/web-console-next
+  doneWhen:
+    - migration 210_arc_review is in the manifest and applied on stage and prod
+    - a committee member's second vote replaces the first (one row per voter)
+    - voting or deciding an incomplete request is 409 clock_not_started; a second decision is 409 already_decided
+    - a denial without a rationale, or a conditional approval without conditions, is 422
+    - a decision writes a %PDF- letter to R2 whose SHA-256 matches arc_decisions.letter_sha256, served to the homeowner by token
+    - arc.request.voted and arc.request.decided appear in the organization's audit trail
+  gates: []

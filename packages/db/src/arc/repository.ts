@@ -1,6 +1,12 @@
 import type { SqlExecutor, SqlRow } from "../d1/executor.js";
 import type {
   ArcBoard,
+  ArcComment,
+  ArcDecision,
+  ArcVoteRow,
+  CreateArcCommentInput,
+  CreateArcDecisionInput,
+  UpsertArcVoteInput,
   ArcChecklistItem,
   ArcDocument,
   ArcRepository,
@@ -42,6 +48,7 @@ function mapBoard(row: Row): ArcBoard {
     contactEmail: row.contact_email as string,
     escalationEmail: str(row.escalation_email),
     formEnabled: Number(row.form_enabled) === 1,
+    appealText: str(row.appeal_text),
     createdBy: str(row.created_by),
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
@@ -102,7 +109,7 @@ function mapDocument(row: Row): ArcDocument {
 }
 
 const BOARD_COLUMNS = `id, org_id, public_slug, association_name, state, review_days, contact_email,
-  escalation_email, form_enabled, created_by, created_at, updated_at`;
+  escalation_email, form_enabled, appeal_text, created_by, created_at, updated_at`;
 
 const CHECKLIST_COLUMNS = `id, org_id, board_id, key, label, required, categories, position,
   created_at, updated_at, archived_at`;
@@ -110,6 +117,60 @@ const CHECKLIST_COLUMNS = `id, org_id, board_id, key, label, required, categorie
 const REQUEST_COLUMNS = `id, org_id, board_id, number, category, title, description, property_address,
   applicant_name, applicant_email, status, submitted_at, clock_started_at, decision_due_on,
   decided_at, created_at, updated_at`;
+
+function mapComment(row: Row): ArcComment {
+  return {
+    id: row.id as string,
+    orgId: row.org_id as string,
+    requestId: row.request_id as string,
+    authorSubjectId: row.author_subject_id as string,
+    body: row.body as string,
+    visibility: row.visibility as string,
+    createdAt: row.created_at as string,
+  };
+}
+
+function mapVote(row: Row): ArcVoteRow {
+  return {
+    id: row.id as string,
+    orgId: row.org_id as string,
+    requestId: row.request_id as string,
+    voterSubjectId: row.voter_subject_id as string,
+    vote: row.vote as string,
+    conditions: str(row.conditions),
+    note: str(row.note),
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+function mapDecision(row: Row): ArcDecision {
+  let tally: Record<string, number> = {};
+  try {
+    tally = JSON.parse(String(row.vote_tally ?? "{}")) as Record<string, number>;
+  } catch {
+    tally = {};
+  }
+  return {
+    id: row.id as string,
+    orgId: row.org_id as string,
+    requestId: row.request_id as string,
+    outcome: row.outcome as string,
+    conditions: str(row.conditions),
+    rationale: str(row.rationale),
+    voteTally: tally,
+    letterObjectKey: row.letter_object_key as string,
+    letterSha256: row.letter_sha256 as string,
+    decidedBy: str(row.decided_by),
+    decidedAt: row.decided_at as string,
+    letterEmailedAt: str(row.letter_emailed_at),
+  };
+}
+
+const COMMENT_COLUMNS = `id, org_id, request_id, author_subject_id, body, visibility, created_at`;
+const VOTE_COLUMNS = `id, org_id, request_id, voter_subject_id, vote, conditions, note, created_at, updated_at`;
+const DECISION_COLUMNS = `id, org_id, request_id, outcome, conditions, rationale, vote_tally, letter_object_key,
+  letter_sha256, decided_by, decided_at, letter_emailed_at`;
 
 const DOCUMENT_COLUMNS = `id, org_id, request_id, checklist_key, object_key, filename, content_type,
   byte_size, sha256, uploaded_at`;
@@ -141,8 +202,8 @@ export function createArcRepository(executor: SqlExecutor): ArcRepository {
       const row = await one(
         `INSERT INTO arc_boards
            (id, org_id, public_slug, association_name, state, review_days, contact_email,
-            escalation_email, form_enabled, created_by, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
+            escalation_email, form_enabled, appeal_text, created_by, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $12, $10, $11, $11)
          ON CONFLICT (org_id) DO UPDATE SET
            public_slug = excluded.public_slug,
            association_name = excluded.association_name,
@@ -151,6 +212,7 @@ export function createArcRepository(executor: SqlExecutor): ArcRepository {
            contact_email = excluded.contact_email,
            escalation_email = excluded.escalation_email,
            form_enabled = excluded.form_enabled,
+           appeal_text = excluded.appeal_text,
            updated_at = excluded.updated_at
          RETURNING ${BOARD_COLUMNS}`,
         [
@@ -165,6 +227,7 @@ export function createArcRepository(executor: SqlExecutor): ArcRepository {
           input.formEnabled ? 1 : 0,
           input.createdBy,
           input.now,
+          input.appealText,
         ],
       );
       if (!row) throw new Error("arc: board upsert returned no row");
@@ -384,6 +447,112 @@ export function createArcRepository(executor: SqlExecutor): ArcRepository {
             )
           RETURNING ${REQUEST_COLUMNS}`,
         [requestId, now],
+      );
+      return row ? mapRequest(row) : null;
+    },
+
+    async createComment(input: CreateArcCommentInput) {
+      const row = await one(
+        `INSERT INTO arc_comments (id, org_id, request_id, author_subject_id, body, visibility, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING ${COMMENT_COLUMNS}`,
+        [input.id, input.orgId, input.requestId, input.authorSubjectId, input.body, input.visibility, input.createdAt],
+      );
+      if (!row) throw new Error("arc: comment insert returned no row");
+      return mapComment(row);
+    },
+
+    async listComments(requestId, visibility) {
+      const params: unknown[] = [requestId];
+      let where = "request_id = $1";
+      if (visibility) {
+        params.push(visibility);
+        where += " AND visibility = $2";
+      }
+      const result = await executor.execute<Row>(
+        `SELECT ${COMMENT_COLUMNS} FROM arc_comments WHERE ${where} ORDER BY created_at ASC, id ASC`,
+        params,
+      );
+      return result.rows.map(mapComment);
+    },
+
+    async upsertVote(input: UpsertArcVoteInput) {
+      const row = await one(
+        `INSERT INTO arc_votes (id, org_id, request_id, voter_subject_id, vote, conditions, note, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
+         ON CONFLICT (request_id, voter_subject_id) DO UPDATE SET
+           vote = excluded.vote,
+           conditions = excluded.conditions,
+           note = excluded.note,
+           updated_at = excluded.updated_at
+         RETURNING ${VOTE_COLUMNS}`,
+        [input.id, input.orgId, input.requestId, input.voterSubjectId, input.vote, input.conditions, input.note, input.now],
+      );
+      if (!row) throw new Error("arc: vote upsert returned no row");
+      return mapVote(row);
+    },
+
+    async listVotes(requestId) {
+      const result = await executor.execute<Row>(
+        `SELECT ${VOTE_COLUMNS} FROM arc_votes WHERE request_id = $1 ORDER BY created_at ASC, id ASC`,
+        [requestId],
+      );
+      return result.rows.map(mapVote);
+    },
+
+    async createDecision(input: CreateArcDecisionInput) {
+      try {
+        const row = await one(
+          `INSERT INTO arc_decisions
+             (id, org_id, request_id, outcome, conditions, rationale, vote_tally, letter_object_key,
+              letter_sha256, letter_token_hash, decided_by, decided_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           RETURNING ${DECISION_COLUMNS}`,
+          [
+            input.id,
+            input.orgId,
+            input.requestId,
+            input.outcome,
+            input.conditions,
+            input.rationale,
+            JSON.stringify(input.voteTally),
+            input.letterObjectKey,
+            input.letterSha256,
+            input.letterTokenHash,
+            input.decidedBy,
+            input.decidedAt,
+          ],
+        );
+        return row ? mapDecision(row) : null;
+      } catch (err) {
+        if (isUniqueViolation(err)) return null;
+        throw err;
+      }
+    },
+
+    async getDecision(requestId) {
+      const row = await one(`SELECT ${DECISION_COLUMNS} FROM arc_decisions WHERE request_id = $1`, [requestId]);
+      return row ? mapDecision(row) : null;
+    },
+
+    async getDecisionByLetterTokenHash(tokenHash) {
+      const row = await one(`SELECT ${DECISION_COLUMNS} FROM arc_decisions WHERE letter_token_hash = $1`, [tokenHash]);
+      return row ? mapDecision(row) : null;
+    },
+
+    async markLetterEmailed(decisionId, at) {
+      await executor.execute(
+        `UPDATE arc_decisions SET letter_emailed_at = COALESCE(letter_emailed_at, $2) WHERE id = $1`,
+        [decisionId, at],
+      );
+    },
+
+    async closeRequest(requestId, status, decidedAt) {
+      const row = await one(
+        `UPDATE arc_requests SET status = $2, decided_at = $3, updated_at = $3
+          WHERE id = $1 AND status = 'under_review'
+          RETURNING ${REQUEST_COLUMNS}`,
+        [requestId, status, decidedAt],
       );
       return row ? mapRequest(row) : null;
     },

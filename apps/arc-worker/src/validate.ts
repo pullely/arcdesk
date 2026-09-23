@@ -1,8 +1,14 @@
 import {
+  ARC_COMMENT_VISIBILITIES,
+  ARC_DECISION_OUTCOMES,
   ARC_REQUEST_CATEGORIES,
   ARC_STATES,
+  ARC_VOTES,
+  type ArcCommentVisibility,
+  type ArcDecisionOutcome,
   type ArcRequestCategory,
   type ArcState,
+  type ArcVote,
 } from "@saas/contracts/arc";
 
 export type Validation<T> = { valid: true; value: T } | { valid: false; fields: Record<string, string[]> };
@@ -71,6 +77,7 @@ export interface BoardFields {
   contactEmail: string;
   escalationEmail: string | null;
   formEnabled: boolean;
+  appealText: string | null;
 }
 
 export function validateBoardBody(body: unknown): Validation<BoardFields> {
@@ -93,6 +100,7 @@ export function validateBoardBody(body: unknown): Validation<BoardFields> {
   const escalationEmail = email(c, body, "escalationEmail", false);
   const formEnabled = body.formEnabled ?? true;
   if (typeof formEnabled !== "boolean") c.add("formEnabled", "Must be a boolean");
+  const appealText = text(c, body, "appealText", { required: false, max: 2000 });
   if (!c.ok) return { valid: false, fields: c.fields };
   return {
     valid: true,
@@ -104,6 +112,7 @@ export function validateBoardBody(body: unknown): Validation<BoardFields> {
       contactEmail: contactEmail!,
       escalationEmail: escalationEmail ?? null,
       formEnabled: formEnabled as boolean,
+      appealText: appealText && appealText.length > 0 ? appealText : null,
     },
   };
 }
@@ -184,4 +193,66 @@ export function sanitizeFilename(raw: string | null): string {
   const base = (raw ?? "").split(/[\\/]/).pop() ?? "";
   const clean = base.replace(/[^\w.\- ]+/g, "_").trim().slice(0, 120);
   return clean.length > 0 ? clean : "document";
+}
+
+export function validateCommentBody(body: unknown): Validation<{ body: string; visibility: ArcCommentVisibility }> {
+  if (!isObject(body)) return { valid: false, fields: { body: ["Must be a JSON object"] } };
+  const c = new Collector();
+  const text_ = text(c, body, "body", { required: true, max: 5000 });
+  const visibility = body.visibility ?? "committee";
+  if (typeof visibility !== "string" || !(ARC_COMMENT_VISIBILITIES as readonly string[]).includes(visibility)) {
+    c.add("visibility", `One of ${ARC_COMMENT_VISIBILITIES.join(", ")}`);
+  }
+  if (!c.ok) return { valid: false, fields: c.fields };
+  return { valid: true, value: { body: text_!, visibility: visibility as ArcCommentVisibility } };
+}
+
+export function validateVoteBody(body: unknown): Validation<{ vote: ArcVote; conditions: string | null; note: string | null }> {
+  if (!isObject(body)) return { valid: false, fields: { body: ["Must be a JSON object"] } };
+  const c = new Collector();
+  const vote = body.vote;
+  if (typeof vote !== "string" || !(ARC_VOTES as readonly string[]).includes(vote)) {
+    c.add("vote", `One of ${ARC_VOTES.join(", ")}`);
+  }
+  const conditions = text(c, body, "conditions", { required: false, max: 5000 });
+  const note = text(c, body, "note", { required: false, max: 5000 });
+  if (vote === "approve_with_conditions" && !conditions) c.add("conditions", "Required for a conditional approval");
+  if (!c.ok) return { valid: false, fields: c.fields };
+  return {
+    valid: true,
+    value: {
+      vote: vote as ArcVote,
+      conditions: vote === "approve_with_conditions" ? conditions! : null,
+      note: note && note.length > 0 ? note : null,
+    },
+  };
+}
+
+/**
+ * The decision's own rules: a conditional approval names its conditions and
+ * a denial states its basis — both states require the basis of a denial in
+ * writing, and a letter that says "denied" and nothing else invites a dispute.
+ */
+export function validateDecisionBody(
+  body: unknown,
+): Validation<{ outcome: ArcDecisionOutcome; conditions: string | null; rationale: string | null }> {
+  if (!isObject(body)) return { valid: false, fields: { body: ["Must be a JSON object"] } };
+  const c = new Collector();
+  const outcome = body.outcome;
+  if (typeof outcome !== "string" || !(ARC_DECISION_OUTCOMES as readonly string[]).includes(outcome)) {
+    c.add("outcome", `One of ${ARC_DECISION_OUTCOMES.join(", ")}`);
+  }
+  const conditions = text(c, body, "conditions", { required: false, max: 5000 });
+  const rationale = text(c, body, "rationale", { required: false, max: 5000 });
+  if (outcome === "approved_with_conditions" && !conditions) c.add("conditions", "Required for a conditional approval");
+  if (outcome === "denied" && !rationale) c.add("rationale", "A denial must state its reasons");
+  if (!c.ok) return { valid: false, fields: c.fields };
+  return {
+    valid: true,
+    value: {
+      outcome: outcome as ArcDecisionOutcome,
+      conditions: outcome === "approved_with_conditions" ? conditions! : null,
+      rationale: rationale && rationale.length > 0 ? rationale : null,
+    },
+  };
 }

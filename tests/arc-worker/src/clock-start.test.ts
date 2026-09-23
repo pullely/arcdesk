@@ -14,7 +14,7 @@ async function setup() {
   const arc = createArcRepository(createSqlExecutor(d1Over(db)));
   const { board } = await arc.upsertBoard({
     id: crypto.randomUUID(), orgId: ORG, publicSlug: "elm", associationName: "Elm", state: "TX",
-    reviewDays: 30, contactEmail: "a@b.co", escalationEmail: null, formEnabled: true, createdBy: null, now: NOW,
+    reviewDays: 30, contactEmail: "a@b.co", escalationEmail: null, formEnabled: true, appealText: null, createdBy: null, now: NOW,
   });
   const add = (key: string, required: boolean, categories: string[] = []) =>
     arc.createChecklistItem({ id: crypto.randomUUID(), orgId: ORG, boardId: board.id, key, label: key, required, categories, position: 0, now: NOW });

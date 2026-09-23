@@ -58,6 +58,10 @@ export class FakeR2 {
     return { key };
   }
 
+  async delete(key: string): Promise<void> {
+    this.objects.delete(key);
+  }
+
   async get(key: string): Promise<{ body: ReadableStream; size: number } | null> {
     const o = this.objects.get(key);
     if (!o) return null;

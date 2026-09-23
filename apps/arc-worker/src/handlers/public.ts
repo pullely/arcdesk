@@ -43,12 +43,14 @@ export async function loadByToken(db: Db, token: string): Promise<{ request: Arc
   return board ? { request, board } : null;
 }
 
-export async function buildStatus(db: Db, board: ArcBoard, request: ArcRequest): Promise<ArcPublicStatus> {
-  const [items, docs] = await Promise.all([
+export async function buildStatus(db: Db, board: ArcBoard, request: ArcRequest, token: string): Promise<ArcPublicStatus> {
+  const [items, docs, messages, decision] = await Promise.all([
     db.arc.listChecklist(board.id, false),
     db.arc.listDocuments(request.id),
+    db.arc.listComments(request.id, "applicant"),
+    db.arc.getDecision(request.id),
   ]);
-  return toPublicStatus(board, request, checklistState(items, request.category, docs), docs);
+  return toPublicStatus(board, request, checklistState(items, request.category, docs), docs, messages, decision, token);
 }
 
 export async function handlePublicBoard(env: Env, requestId: string, slug: string): Promise<Response> {
@@ -128,7 +130,7 @@ export async function handleSubmit(
     await sendRequestReceived(env, requestId, board, created, statusUrl);
 
     return successResponse(
-      { status: await buildStatus(db, board, created), statusToken: token, statusUrlPath: statusPath(token) },
+      { status: await buildStatus(db, board, created, token), statusToken: token, statusUrlPath: statusPath(token) },
       requestId,
       201,
     );
@@ -161,7 +163,7 @@ export async function handlePublicStatus(env: Env, requestId: string, token: str
   try {
     const found = await loadByToken(db, token);
     if (!found) return notFound(requestId);
-    return successResponse({ status: await buildStatus(db, found.board, found.request) }, requestId);
+    return successResponse({ status: await buildStatus(db, found.board, found.request, token) }, requestId);
   } catch {
     return unavailable(requestId);
   } finally {
@@ -266,7 +268,7 @@ export async function handleUpload(
     }
 
     return successResponse(
-      { document: toPublicDocument(doc), status: await buildStatus(db, board, arcRequest), clockStarted: !!started },
+      { document: toPublicDocument(doc), status: await buildStatus(db, board, arcRequest, token), clockStarted: !!started },
       requestId,
       201,
     );
