@@ -1,0 +1,10 @@
+{
+  "reponame": "arcdesk",
+  "productname": "Arcdesk",
+  "productdomain": "arcdesk.app",
+  "subdomain": "nexo-7be",
+  "orunWorkspace": "ws_001F4MMD",
+  "githuborg": "pullely",
+  "epicSlug": "infra-baselining",
+  "domain": false
+}
